@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
+from lutron_homeworks.commands.base import CommandType, CommandError
 from lutron_homeworks.commands.system import SystemCommand, SystemAction
 from lutron_homeworks.client import LutronHomeworksClient
 
@@ -53,7 +54,7 @@ async def lutron_client(server_config: DictConfig | ListConfig):
 
 
 @pytest.mark.asyncio
-async def test_manual_system_command(lutron_client):
+async def test_manual_system_command(lutron_client: LutronHomeworksClient):
     """Test manually forming a SystemCommand and executing it with the client"""
     # Manually create a system command for getting time (action 1)
     cmd = SystemCommand(action=SystemAction.TIME)
@@ -78,7 +79,19 @@ async def test_manual_system_command(lutron_client):
 
 
 @pytest.mark.asyncio
-async def test_system_get_time(lutron_client):
+async def test_system_produces_error(lutron_client: LutronHomeworksClient):
+    # Produce a bad system command
+    cmd = SystemCommand(action=SystemAction.TIME)
+    cmd.set([1, 1])
+    # Force command type back to get
+    cmd.command_type = CommandType.QUERY
+    
+    # Execute the command against the Lutron client and expect exception
+    with pytest.raises(CommandError):
+        await cmd.execute(lutron_client)
+
+@pytest.mark.asyncio
+async def test_system_get_time(lutron_client: LutronHomeworksClient):
     """Test SystemCommand.get_time() to get the current system time from a real Lutron system"""
     # Create the system time command
     cmd = SystemCommand.get_time()
@@ -104,7 +117,7 @@ async def test_system_get_time(lutron_client):
 
 
 @pytest.mark.asyncio
-async def test_system_get_date(lutron_client):
+async def test_system_get_date(lutron_client: LutronHomeworksClient):
     """Test SystemCommand.get_date() to get the current system date from a real Lutron system"""
     # Create the system date command
     cmd = SystemCommand.get_date()
@@ -123,7 +136,7 @@ async def test_system_get_date(lutron_client):
 
 
 @pytest.mark.asyncio
-async def test_multiple_system_commands(lutron_client):
+async def test_multiple_system_commands(lutron_client: LutronHomeworksClient):
     """Test running multiple system commands sequentially"""
     # Get system time
     time_result = await SystemCommand.get_time().execute(lutron_client)
@@ -143,7 +156,7 @@ async def test_multiple_system_commands(lutron_client):
     assert latlong is not None
 
 @pytest.mark.asyncio
-async def test_system_get_os_rev(lutron_client):
+async def test_system_get_os_rev(lutron_client: LutronHomeworksClient):
     """Test SystemCommand.get_os_rev() to get the current system OS revision from a real Lutron system"""
     # Create the system OS revision command
     cmd = SystemCommand.get_os_rev()
@@ -160,7 +173,7 @@ async def test_system_get_os_rev(lutron_client):
     assert "OS Firmware Revision" in result
 
 @pytest.mark.asyncio
-async def test_system_get_timezone(lutron_client):
+async def test_system_get_timezone(lutron_client: LutronHomeworksClient):
     """Test SystemCommand.get_timezone() to get the current system timezone from a real Lutron system"""
     # Create the system timezone command
     cmd = SystemCommand.get_timezone()
