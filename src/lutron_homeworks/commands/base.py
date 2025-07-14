@@ -403,12 +403,15 @@ class LutronCommand(Generic[ActionT]):
         self._logger.debug(f"Handle error: {event_data}")
         try:
             # Parse error code from data - first element is 'ERROR', second is error code
-            if len(event_data) >= 2 and event_data[0] == "ERROR":
+            error_code = 0
+            if len(event_data) >= 1:
                 try:
-                    error_code = int(event_data[1])
-                    future.set_exception(CommandError(error_code, self.formatted_command))
+                    error_code = int(event_data[0])
                 except (ValueError, IndexError):
-                    future.set_exception(CommandError(0, self.formatted_command))
+                    error_code = 0
+
+            self._logger.warning(f"Command {self.formatted_command} failed with error code {error_code}")
+            future.set_exception(CommandError(error_code, self.formatted_command))
         except Exception as e:
             self._logger.exception(f"Error parsing error: {e}")
             future.set_exception(e)
