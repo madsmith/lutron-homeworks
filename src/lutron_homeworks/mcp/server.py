@@ -4,7 +4,9 @@ import importlib.metadata
 from fastmcp import FastMCP
 import logging
 from opentelemetry import trace
+import re
 import sys
+import functools
 
 from lutron_homeworks.client import LutronHomeworksClient
 from lutron_homeworks.commands import AreaCommand, OutputCommand
@@ -22,8 +24,29 @@ def mcp_tool(fn):
     setattr(fn, "__mcp_tool__", True)
     return fn
 
+class InternalToolError(Exception):
+    """Exception raised when an internal tool fails"""
+    def __init__(self, original: Exception):
+        self.original = original
+        
+    def __str__(self):
+        return f"Internal Tool Error: [{type(self.original).__name__}] {self.original}"
+
+def error_handler(fn):
+    """Decorator to catch and log exceptions in MCP tools.
+    Preserves function signature for FastMCP compatibility."""
+    @functools.wraps(fn)  # This preserves the original function signature
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Internal Tool Error: '{fn.__name__}': [{type(e).__name__}] {e}")
+            raise InternalToolError(e)
+    return wrapper
+
 class LutronMCPTools:
-    def __init__(self, client: LutronHomeworksClient, database: LutronDatabase):
+    def __init__(self, config: LutronConfig, client: LutronHomeworksClient, database: LutronDatabase):
+        self.config = config
         self.client = client
         self.database = database
 
@@ -39,6 +62,7 @@ class LutronMCPTools:
     @mcp_tool
     @tracer.start_as_current_span("say_hello")
     def say_hello(self) -> str:
+        """ Debugging purposes only """
         return "Hello, MCP!"
 
     #================================================================
@@ -48,28 +72,97 @@ class LutronMCPTools:
     @mcp_tool
     @tracer.start_as_current_span("get_areas")
     def get_areas(self) -> list[LutronArea]:
+        """
+        Get all areas in the Lutron system.
+        
+        Returns a list of all areas (rooms, floors, etc.) defined in the Lutron database.
+        Each area contains information about its Integration ID (IID), name, path in the hierarchy, and 
+        related properties.
+        
+        Returns:
+            list[LutronArea]: A list of LutronArea objects representing all areas in the system
+        """
         areas = self.database.getAreas()
         return areas
 
     @mcp_tool
     @tracer.start_as_current_span("get_outputs")
     def get_outputs(self) -> list[LutronOutput]:
+        """
+        Get all outputs in the Lutron system.
+        
+        Returns a list of all outputs (lights, shades, etc.) defined in the Lutron database.
+        Each output contains information about its Integration ID (IID), name, type, and current state.
+        
+        Returns:
+            list[LutronOutput]: A list of LutronOutput objects representing all outputs in the system
+        """
         outputs = self.database.getOutputs()
         return outputs
 
     @mcp_tool
     @tracer.start_as_current_span("get_output_by_iid")
     def get_output_by_iid(self, iid: int) -> LutronOutput | None:
+        """
+        Get a specific output by its Integration ID (IID).
+        
+        Retrieves a single output device (light, shade, etc.) by its unique Integration ID.
+        This is useful when you need to access a specific device by its ID rather than
+        searching through all outputs.
+        
+        Args:
+            iid (int): The Integration ID of the output to retrieve
+            
+        Returns:
+            LutronOutput | None: The LutronOutput object if found, or None if no output exists with the given IID
+        """
         output = self.database.getOutputsByIID(iid)
         return output
 
     @mcp_tool
     @tracer.start_as_current_span("get_entities")
     def get_entities(self) -> list[LutronEntity]:
+        """
+        Get all entities in the Lutron system.
+        
+        Returns a list of all entities (areas, outputs, keypads, etc.) defined in the Lutron database.
+        This is the most comprehensive view of all items in the system, including areas, outputs,
+        and other device types.
+        
+        Returns:
+            list[LutronEntity]: A list of LutronEntity objects representing all entities in the system
+        """
         entities = self.database.getEntities()
         for entity in entities:
             print(entity)
         return entities
+
+    @mcp_tool
+    @error_handler
+    @tracer.start_as_current_span("find_area_by_name")
+    def find_areas_by_name(self, name: str) -> list[LutronEntity]:
+        """
+        Find areas in the database by name. Returns any areas that match the sequence
+        of words in the name.  Fuzzing matching against a limited list of synonyms is
+        also applied in the search.
+
+        Args:
+            name (str): The name to search for
+
+        Returns:
+            list[LutronEntity]: A list of LutronEntity objects representing the 
+            areas that match the search, or an empty list if no matches are found
+        """
+        # Convert name into a regex pattern
+        name_re = self._build_search_re(name)
+
+        results = []
+
+        for entity in self.database.getAreas():
+            if name_re.match(entity.path.lower()):
+                results.append(entity)
+
+        return results
 
     #================================================================
     # Lutron Server tools
@@ -77,7 +170,16 @@ class LutronMCPTools:
 
     @mcp_tool
     @tracer.start_as_current_span("get_output_level")
-    async def get_output_level(self, iid: int):
+    async def get_output_level(self, iid: int) -> float:
+        """
+        Get the current level of an output device.
+
+        Args:
+            iid (int): The Integration ID of the output to retrieve
+
+        Returns:
+            float: The current level of the output as a float between 0 and 100
+        """
         output = self.database.getOutputsByIID(iid)
         if output is None:
             raise RuntimeError(f"Output {iid} not found")
@@ -88,11 +190,16 @@ class LutronMCPTools:
 
     @mcp_tool
     @tracer.start_as_current_span("set_output_level")
-    async def set_output_level(self, iid: int, level: int):
+    async def set_output_level(self, iid: int, level: float):
+        """
+        Set the level of an output device.
 
+        Args:
+            iid (int): The Integration ID of the output to set
+            level (float): The level to set the output to as a float between 0 and 100
+        """
         # Verify the output exists
         output = self.database.getOutputsByIID(iid)
-        print(output)
         if output is None:
             raise RuntimeError(f"Output {iid} not found")
         
@@ -100,7 +207,7 @@ class LutronMCPTools:
         
         # Set the output level
         command = OutputCommand.set_zone_level(iid, level)
-        print(command.formatted_command)
+        
         await self.client.execute_command(command)
 
     @mcp_tool
@@ -128,9 +235,36 @@ class LutronMCPTools:
     # Internal functions
     #================================================================
     
-    def _validate_level(self, level: int):
+    def _validate_level(self, level: float):
         if level < 0 or level > 100:
             raise RuntimeError(f"Level {level} is not between 0 and 100")
+
+    def _build_search_re(self, name: str) -> re.Pattern:
+        synonyms = self.config.synonyms
+        normalized_synonyms = [
+            set(synonym.lower() for synonym in synonym_set)
+            for synonym_set in synonyms
+        ]
+        def build_part_pattern(part: str) -> str:
+            for synonym_set in normalized_synonyms:
+                if part in synonym_set:
+                    # Build a regex pattern that matches any of the synonyms
+                    escaped_synonyms = [re.escape(synonym) for synonym in synonym_set]
+                    return f"({'|'.join(escaped_synonyms)})"
+            return part
+        
+        name_normalized = name.lower()
+
+        name_parts = name_normalized.split(" ")
+
+        name_pattern = ""
+        for part in name_parts:
+            part_pattern = build_part_pattern(part)
+            name_pattern += f".*{part_pattern}"
+        if name_pattern:
+            name_pattern += ".*"
+        
+        return re.compile(name_pattern)
 
 @tracer.start_as_current_span("run_server")
 async def run_server(args):
@@ -203,7 +337,7 @@ async def run_server(args):
     # Connect to the client
     await client.connect()
 
-    tools = LutronMCPTools(client, database)
+    tools = LutronMCPTools(config, client, database)
 
     # Register all tool functions (to be implemented)
     tools.register_tools(server)

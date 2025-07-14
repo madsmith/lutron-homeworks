@@ -76,4 +76,4 @@ class LutronDBEntity:
         self.path = " / ".join(path)
         return self
 
-LutronEntity = LutronDBEntity
+LutronEntity = LutronDBEntity | LutronArea | LutronOutput

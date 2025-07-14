@@ -160,7 +160,7 @@ class LutronDatabase:
             if entity.type == EntityType.OUTPUT and entity.subtype == output_type
         ]
 
-    def getAreas(self, parents: bool = False) -> list[LutronEntity]:
+    def getAreas(self, parents: bool = False) -> list[LutronArea]:
         return [
             LutronArea.from_entity(entity)
             for entity in self._entities.values() 

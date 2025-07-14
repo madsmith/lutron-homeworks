@@ -28,6 +28,7 @@ class LutronConfig:
         self._listen_port: int | None = listen_port
         self._cache_only: bool | None = cache_only
         self._filters: list[dict[str, list[list[Any]]]] | None = None
+        self._synonyms: list[list[str]] | None = None
         self._config: DictConfig | ListConfig | None = None
 
         # Load from config file if provided
@@ -118,6 +119,13 @@ class LutronConfig:
         filters = self._config_get(None, "lutron.database.filters", {})
         return filters
 
+    @property
+    def synonyms(self) -> list[list[str]]:
+        if self._synonyms:
+            return self._synonyms
+        synonyms = self._config_get(None, "lutron.database.synonyms", [])
+        return synonyms
+    
     def _config_get(self, env_key: str | None, config_key: str, default: Any = None):
         if env_key is not None:
             env_val = os.environ.get(env_key)
