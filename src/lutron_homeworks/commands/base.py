@@ -354,7 +354,7 @@ class LutronCommand(Generic[ActionT]):
             else:
                 # All fields in schema matched values present in object
                 # Ignoring remaining fields in schema
-                print(f"Matches 1: True, Unmatched data: {event_data[idx:]} Event Data: {event_data} Index: {idx}")
+                # print(f"Matches 1: True, Unmatched data: {event_data[idx:]} Event Data: {event_data} Index: {idx}")
                 return True, event_data[idx:]
             
             # Match field value with event data
@@ -363,7 +363,7 @@ class LutronCommand(Generic[ActionT]):
                 return False, []
         
         # All specified fields match
-        print(f"Matches 2: True, Unmatched data: {event_data[len(self.schema.response_index_map):]}")
+        # print(f"Matches 2: True, Unmatched data: {event_data[len(self.schema.response_index_map):]}")
         return True, event_data[len(self.schema.response_index_map):]
 
     def handle_response(self, event_data: List[Any], future: asyncio.Future, unsubscribe_func: Callable[[], None]):
@@ -374,15 +374,15 @@ class LutronCommand(Generic[ActionT]):
             unsubscribe_func()
             return
             
-        self._logger.debug(f"Handle response: {event_data}")
+        # self._logger.debug(f"Handle response: {event_data}")
         try:
             # Check if the event matches this command's expected response
             matches, unmatched_data = self._matches_response(event_data)
+            # print(f"Matches: {matches}, Unmatched data: {unmatched_data}")
             if not matches:
                 # Not a match for our command
                 self._logger.debug(f"Response does not match: {event_data}")
                 return
-            print(f"Matches: {matches}, Unmatched data: {unmatched_data}")
             # Parse and set response on future
             result = self.process_response(unmatched_data)
             future.set_result(result)
