@@ -1,0 +1,4 @@
+# Ignore python byproducts
+__pycache__/*
+*.pyc
+*.egg-info

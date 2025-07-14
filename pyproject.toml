@@ -1,0 +1,40 @@
+[project]
+name = "lutron-homeworks"
+version = "0.2.0"
+description = "API for Lutron Homeworks devices"
+authors = [
+    {name = "Martin Smith", email = "msmith@bitmonster.org"}
+]
+dependencies = [
+    "aiohttp>=3.8.0",
+    "aiofiles>=23.2.1",
+    "omegaconf>=2.3.0",
+    "pydantic>=2.11.5",
+    "fastmcp>=2.9.2",
+    "opentelemetry-api>=1.34.1",
+    "requests>=2.32.4",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.scripts]
+mcp-lutron-homeworks = "lutron_homeworks.mcp.__main__:main"
+mcp-client = "scripts.client:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lutron_homeworks = ["py.typed"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "opentelemetry-sdk>=1.34.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+]

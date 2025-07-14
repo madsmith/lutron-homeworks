@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project>
+    <ProjectName ProjectName="Smith HomeWorks QS Project"/>
+    <Latitude>38.6</Latitude>
+    <Longitude>-90.7</Longitude>
+    <Copyright>Copyright 2010 Lutron Electronics Co., Inc. All rights reserved</Copyright>
+    <GUID>fa4490c9464a4d4faee761135a86f9ca</GUID>
+    <AppVer>9.4.0</AppVer>
+    <XMLVer>1.0</XMLVer>
+    <DbExportDate>04/04/2025</DbExportDate>
+    <DbExportTime>17:34:22</DbExportTime>
+    <GlobalPreferences>
+        <RaiseLowerDirection>0</RaiseLowerDirection>
+        <LowerLevel>0</LowerLevel>
+        <RaiseLevel>2</RaiseLevel>
+    </GlobalPreferences>
+    <Areas>
+        <Area Name="100 Main Floor" IntegrationID="0" OccupancyGroupAssignedToID="100" SortOrder="1">
+            <Areas>
+                <Area Name="001 Living Rom" IntegrationID="11" OccupancyGroupAssignedToID="101" SortOrder="1">
+                    <Outputs>
+                        <Output Name="Stairwell Chandelier 1" IntegrationID="111" OutputType="INC" Wattage="125" SortOrder="1"/>
+                        <Output Name="Stairwell Rec Cans 4" IntegrationID="110" OutputType="INC" Wattage="88" SortOrder="0"/>
+                        <Output Name="Shade 001" IntegrationID="444" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="2"/>
+                        <Output Name="Shade 002" IntegrationID="446" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="3"/>
+                    </Outputs>
+                </Area>
+                <Area Name="002 Kitchen" IntegrationID="12" OccupancyGroupAssignedToID="102" SortOrder="2">
+                    <Outputs>
+                        <Output Name="Kitchen Island Lights" IntegrationID="121" OutputType="INC" Wattage="75" SortOrder="0"/>
+                        <Output Name="Kitchen Pendant" IntegrationID="122" OutputType="INC" Wattage="60" SortOrder="1"/>
+                        <Output Name="Kitchen Shade" IntegrationID="450" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="2"/>
+                    </Outputs>
+                </Area>
+                <Area Name="003 Kitchen Island" IntegrationID="13" OccupancyGroupAssignedToID="103" SortOrder="1">
+                    <Outputs>
+                        <Output Name="Island Pendant 1" IntegrationID="131" OutputType="INC" Wattage="40" SortOrder="0"/>
+                        <Output Name="Island Pendant 2" IntegrationID="132" OutputType="INC" Wattage="40" SortOrder="1"/>
+                        <Output Name="Island Pendant 3" IntegrationID="133" OutputType="INC" Wattage="40" SortOrder="2"/>
+                    </Outputs>
+                </Area>
+            </Areas>
+        </Area>
+        <Area Name="200 2nd Floor" IntegrationID="0" OccupancyGroupAssignedToID="104" SortOrder="2">
+            <Areas>
+                <Area Name="004 Mstr Bedroom" IntegrationID="21" OccupancyGroupAssignedToID="105" SortOrder="1">
+                    <Outputs>
+                        <Output Name="Area Rec Cans 4" IntegrationID="89" OutputType="INC" Wattage="88" SortOrder="0"/>
+                        <Output Name="Chandelier" IntegrationID="91" OutputType="INC" Wattage="125" SortOrder="1"/>
+                        <Output Name="Bed Reading Lamps 2" IntegrationID="74" OutputType="INC" Wattage="44" SortOrder="2"/>
+                        <Output Name="Sheer 1" IntegrationID="412" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="3"/>
+                        <Output Name="Sheer 2" IntegrationID="414" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="4"/>
+                        <Output Name="Blackout 1" IntegrationID="416" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="5"/>
+                        <Output Name="Blackout 2" IntegrationID="418" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="6"/>
+                    </Outputs>
+                </Area>
+                <Area Name="005 Guest Room" IntegrationID="22" OccupancyGroupAssignedToID="106" SortOrder="2">
+                    <Outputs>
+                        <Output Name="Guest Ceiling Light" IntegrationID="221" OutputType="INC" Wattage="75" SortOrder="0"/>
+                        <Output Name="Guest Bedside Lamp" IntegrationID="222" OutputType="INC" Wattage="40" SortOrder="1"/>
+                        <Output Name="Guest Room Shade" IntegrationID="470" OutputType="SYSTEM_SHADE" Wattage="0" SortOrder="2"/>
+                    </Outputs>
+                </Area>
+            </Areas>
+        </Area>
+    </Areas>
+</Project>
+        

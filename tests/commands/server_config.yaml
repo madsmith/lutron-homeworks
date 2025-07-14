@@ -1,0 +1,5 @@
+host: 10.0.0.91
+username: default
+password: default
+command:
+    no_response_timeout: 0.2
