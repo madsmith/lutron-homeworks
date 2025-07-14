@@ -65,7 +65,7 @@ async def lutron_client(server_config: DictConfig | ListConfig):
 
 # Manual test for executing an OutputCommand directly (can be run in VSCode directly)
 @pytest.mark.asyncio
-async def test_manual_output_command(lutron_client):
+async def test_manual_output_command(lutron_client: LutronHomeworksClient):
     """Test executing an OutputCommand manually to get zone level."""
     # Create the command for IID
     cmd = OutputCommand.get_zone_level(TEST_IID)
@@ -93,7 +93,7 @@ async def test_manual_output_command(lutron_client):
 
 # Test for getting zone level
 @pytest.mark.asyncio
-async def test_get_zone_level(lutron_client):
+async def test_get_zone_level(lutron_client: LutronHomeworksClient):
     """Test OutputCommand.get_zone_level() to get the current level of a zone (IID)."""
     # Create the output zone level command for IID
     cmd = OutputCommand.get_zone_level(TEST_IID)
@@ -121,7 +121,7 @@ async def test_set_zone_level_format():
 
 # Test for setting zone level
 @pytest.mark.asyncio
-async def test_set_and_get_zone_level(lutron_client):
+async def test_set_and_get_zone_level(lutron_client: LutronHomeworksClient):
     """Test setting and then getting a zone level to verify the change."""
     # Create the commands for IID
     
@@ -153,7 +153,7 @@ async def test_set_and_get_zone_level(lutron_client):
     print(f"Restored zone {TEST_IID} to original level: {original_level}")
 
 @pytest.mark.asyncio
-async def test_output_raise_lower(lutron_client):
+async def test_output_raise_lower(lutron_client: LutronHomeworksClient):
     """Test OutputCommand.start_raise() to start raising a zone."""
     cmd = OutputCommand.start_raise(TEST_SHADE_IID)
     result = await cmd.execute(lutron_client)
