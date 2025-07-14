@@ -183,6 +183,7 @@ class LutronHomeworksClient:
                     await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, output)
                     continue
                 await self._eventbus.emit(event, data)
+                # Re-emit the event in parsed format
                 await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, data)
             except asyncio.TimeoutError:
                 pass
