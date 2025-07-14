@@ -160,7 +160,7 @@ async def test_command_execution_error():
     
     # Setup mock with error response
     mock_client = MockLutronClient(
-        errors=[["ERROR", "3"]]  # Error code 3
+        errors=["3"]  # Error code 3
     )
     
     with pytest.raises(CommandError) as exc_info:
