@@ -118,7 +118,7 @@ class LutronHomeworksClient:
                     raise ConnectionError("Connection closed by server.")
 
                 buf += chunk
-                self.logger.debug(f"<< CHUNK READ: {chunk} [{len(chunk)}]")
+                # self.logger.debug(f"<< CHUNK READ: {chunk} [{len(chunk)}]")
                 if discard_prompt:
                     if buf.endswith(prompt_bytes):
                         # Remove the prompt from end of buffer
@@ -151,7 +151,6 @@ class LutronHomeworksClient:
             TimeoutError: If the write operation times out
         """
         if timeout is None:
-            self.logger.debug(f"Using default write timeout: {self._write_timeout} seconds")
             timeout = self._write_timeout
             
         self.logger.debug(f">> {data.rstrip()}")
@@ -159,11 +158,7 @@ class LutronHomeworksClient:
         
         try:
             # Use wait_for to add timeout to drain operation
-            self.logger.debug(f"Waiting for write to drain with timeout: {timeout} seconds")
-            import time
-            start_time = time.time()
             await asyncio.wait_for(self.writer.drain(), timeout=timeout)
-            self.logger.debug(f"Write operation completed successfully in {(time.time() - start_time)*1000:.2f} ms")
         except asyncio.TimeoutError:
             self.logger.error(f"Write operation timed out after {timeout} seconds")
             raise TimeoutError(f"Write operation timed out after {timeout} seconds")
@@ -180,25 +175,21 @@ class LutronHomeworksClient:
     async def _output_emitter_loop(self):
         while not self._stop_event.is_set():
             try:
-                self.logger.debug("Output emitter loop started")
                 await asyncio.sleep(0) # Yield to other tasks before reading
-                self.logger.debug("Waiting for output...")
                 output = await self._read_line(timeout=0.1)
-                self.logger.debug(f"Output: {output}")
                 event, data = self._parse_output(output)
                 if event is None:
                     await self._eventbus.emit(LutronSpecialEvents.NonResponseEvents.value, output)
                     await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, output)
                     continue
-                print(f"Event: {event}, Data: {data}")
                 await self._eventbus.emit(event, data)
                 await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, data)
             except asyncio.TimeoutError:
                 pass
             except Exception as e:
                 self.logger.error(f"Error reading from server: {e}")
-                import traceback
-                traceback.print_exc()
+                # import traceback
+                # traceback.print_exc()
                 self.connected = False
                 self.command_ready = False
                 await asyncio.sleep(1)
@@ -338,7 +329,7 @@ class LutronHomeworksClient:
 
     @tracer.start_as_current_span("Close")
     async def close(self):
-        print("Closing Lutron client...")
+        self.logger.info("Closing Lutron client...")
 
         self._stop_event.set()
 
