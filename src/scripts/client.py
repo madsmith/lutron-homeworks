@@ -11,14 +11,26 @@ from mcp.shared.exceptions import McpError
 
 from fastmcp import Client
 
-async def list_items(client: Client, item_type: Optional[str] = None):
+async def list_items(client: Client, item_type: Optional[str] = None, verbose: int = 0):
     """List MCP server items of the specified type or all if none specified"""
     if item_type in (None, "all", "tools"):
         tools = await client.list_tools()
         if tools:
             print("Available tools:")
             for tool in tools:
-                print(f"  {tool.name}")
+                print(f"  - {tool.name}")
+                if verbose > 0:
+                    if tool.description:
+                        print(multi_indent(tool.description, 8))
+                    if verbose > 1:
+                        if tool.inputSchema:
+                            print("        Input Schema:")
+                            print(format_schema(tool.inputSchema, 12))
+                        if tool.outputSchema:
+                            print("        Output Schema:")
+                            print(format_schema(tool.outputSchema, 12))
+                    if tool.annotations:
+                        print(multi_indent(tool.annotations, 8))
             print()
         elif item_type == "tools":
             print("No tools found")
@@ -53,11 +65,20 @@ async def list_items(client: Client, item_type: Optional[str] = None):
         elif item_type == "templates":
             print("No resource templates found")
 
+def multi_indent(message: str, indent: int = 4) -> str:
+    """Indent a multi-line string"""
+    return "\n".join([" " * indent + line for line in message.split("\n")])
+
+def format_schema(schema: dict[str, Any], indent: int = 4) -> str:
+    """Format a schema for display"""
+    schema_str = json.dumps(schema, indent=2)
+    return multi_indent(schema_str, indent)
+    
 async def call_tool(client: Client, tool_name: str, args: list[str] = []):
     """Call an MCP tool with the provided arguments"""
     # Get available tools to validate the tool name
     tools = await client.list_tools()
-    
+
     # Check for exact match first
     exact_match = next((t for t in tools if t.name == tool_name), None)
     
@@ -120,7 +141,7 @@ async def call_tool(client: Client, tool_name: str, args: list[str] = []):
         else:
             print(results)
     except Exception as e:
-        print(f"Error calling tool: {e}")
+        print(e)
         # traceback.print_exc()
 
 async def process_command(client: Client, command: str):
@@ -134,10 +155,14 @@ async def process_command(client: Client, command: str):
     if cmd in ("exit", "quit", "q"):
         return False
     elif cmd in ("ls", "list"):
+        verbose = 0
+        if len(parts) > 1 and (parts[1].lower() == "-v" or parts[1].lower() == "-vv"):
+            verbose = 1 if parts[1].lower() == "-v" else 2
+            parts.pop(1)
         if len(parts) > 1:
-            await list_items(client, parts[1])
+            await list_items(client, parts[1], verbose)
         else:
-            await list_items(client)
+            await list_items(client, verbose=verbose)
     elif cmd in ("help", "?"):
         print_help()
     elif cmd == "connect":
