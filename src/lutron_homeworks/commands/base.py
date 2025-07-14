@@ -475,13 +475,10 @@ class LutronCommand(Generic[ActionT]):
         
         # Subscribe to relevant events
         if not self.no_response:
-            self._logger.debug(f"Registering response handler for command: {formatted_command}")
             event_tokens.append(lutron_client.subscribe(self.command_name, response_handler))
-        self._logger.debug(f"Registering error handler for command: {formatted_command}")
         event_tokens.append(lutron_client.subscribe("ERROR", error_handler))
         
         if self.custom_handler is not None:
-            self._logger.debug(f"Registering custom handler for command: {formatted_command}")
             custom_handler: CustomHandlerT = self.custom_handler
             subscribe_event = self.command_name
             if self.custom_event:
@@ -491,9 +488,7 @@ class LutronCommand(Generic[ActionT]):
         
         # Send the command and handle any immediate errors
         try:
-            self._logger.debug(f"Sending command: {formatted_command}")
             await lutron_client.send_command(formatted_command)
-            self._logger.debug(f"Command sent: {formatted_command}")
         except Exception as e:
             # If command sending fails, set the exception on the future
             unsubscribe_all()
@@ -506,9 +501,8 @@ class LutronCommand(Generic[ActionT]):
         
         async def handle_timeout():
             try:
-                self._logger.debug(f"Waiting for command {formatted_command} to complete...")
                 await asyncio.sleep(timeout)
-                self._logger.debug(f"Command {formatted_command} timed out after {timeout}s")
+                self._logger.info(f"Command {formatted_command} timed out after {timeout}s")
                 if self.no_response:
                     unsubscribe_all()
                     future.set_result(None)
