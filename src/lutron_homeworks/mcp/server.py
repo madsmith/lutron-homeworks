@@ -163,6 +163,7 @@ class LutronMCPTools:
         Returns:
             list[LutronOutput]: A list of LutronOutput objects representing all outputs of the specified subtype
         """
+        subtype = self._normalize_subtype(subtype)
         self._validate_subtype(subtype)
         
         outputs = self.database.getOutputsByType(subtype)
@@ -185,6 +186,7 @@ class LutronMCPTools:
             list[LutronOutput]: A list of LutronOutput objects representing the 
             outputs that match the search, or an empty list if no matches are found
         """
+        subtype = self._normalize_subtype(subtype)
         self._validate_subtype(subtype)
 
         return self._do_search(name, self.database.getOutputsByType(subtype))
@@ -321,6 +323,9 @@ class LutronMCPTools:
         if level < 0 or level > 100:
             raise ValueError(f"Level {level} is not between 0 and 100")
 
+    def _normalize_subtype(self, subtype: str) -> str:
+        return subtype.lower()
+    
     def _validate_subtype(self, subtype: str):
         type_map = self.config.type_map
         if subtype not in type_map:
