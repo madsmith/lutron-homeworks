@@ -108,7 +108,6 @@ class LutronHomeworksClient:
             timeout = self._read_timeout
         
         prompt_bytes = PROMPT.encode('ascii')
-        discard_prompt = self.command_ready and end_bytes != prompt_bytes
 
         buf = b""
         try:
@@ -119,12 +118,11 @@ class LutronHomeworksClient:
 
                 buf += chunk
                 # self.logger.debug(f"<< CHUNK READ: {chunk} [{len(chunk)}]")
-                if discard_prompt:
-                    if buf.endswith(prompt_bytes):
-                        # Remove the prompt from end of buffer
-                        self.logger.debug(f"Discarding prompt... [{prompt_bytes}]")
-                        buf = buf[:-len(prompt_bytes)]
-                        continue
+                if buf.endswith(prompt_bytes):
+                    # Remove the prompt from end of buffer
+                    # self.logger.debug(f"Discarding prompt... [{prompt_bytes}]")
+                    # buf = buf[:-len(prompt_bytes)]
+                    break
 
             self.logger.debug(f"<< {buf.rstrip()}")
 
@@ -177,14 +175,15 @@ class LutronHomeworksClient:
             try:
                 await asyncio.sleep(0) # Yield to other tasks before reading
                 output = await self._read_line(timeout=0.1)
+
                 event, data = self._parse_output(output)
                 if event is None:
-                    await self._eventbus.emit(LutronSpecialEvents.NonResponseEvents.value, output)
-                    await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, output)
+                    self._eventbus.emit(LutronSpecialEvents.NonResponseEvents.value, output)
+                    self._eventbus.emit(LutronSpecialEvents.AllEvents.value, output)
                     continue
-                await self._eventbus.emit(event, data)
+                self._eventbus.emit(event, data)
                 # Re-emit the event in parsed format
-                await self._eventbus.emit(LutronSpecialEvents.AllEvents.value, data)
+                self._eventbus.emit(LutronSpecialEvents.AllEvents.value, data)
             except asyncio.TimeoutError:
                 pass
             except Exception as e:
@@ -202,7 +201,8 @@ class LutronHomeworksClient:
             return None, None
 
         if line.startswith(PROMPT):
-            self.logger.debug(f"Ignoring Command Prompt: {line}")
+            self.logger.debug("Command prompt received")
+            self._eventbus.emit(LutronSpecialEvents.CommandPrompt.value, None)
             return None, None
 
         if not line.startswith(COMMAND_RESPONSE_PREFIX):

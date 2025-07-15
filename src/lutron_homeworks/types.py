@@ -3,9 +3,12 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Callable, List, TypeVar, Union
 
+from lutron_homeworks.utils.events import SubscriptionToken
+
 class LutronSpecialEvents(Enum):
     AllEvents = "::[*]::"
     NonResponseEvents = "::[msg]::"
+    CommandPrompt = "::[prompt]::"
 
 class CommandType(Enum):
     QUERY = auto()
@@ -16,9 +19,18 @@ class CommandType(Enum):
 # Define a type variable for action enums
 ActionT = TypeVar('ActionT', bound=Union[int, Enum])
 
-# Custom handler type for command response processing
-CustomHandlerT = Callable[[Union[bytes, List[Any]], asyncio.Future, Callable[[], None]], None]
+UnsubscribeFnT = Callable[[], None]
 
+@dataclass
+class ExecuteContext:
+    client: "LutronHomeworksClient"
+    event_tokens: List[SubscriptionToken]
+    future: asyncio.Future
+    unsubscribe_all: UnsubscribeFnT
+
+# Custom handler type for command response processing
+CustomHandlerT = Callable[[Union[bytes, List[Any], None], asyncio.Future, UnsubscribeFnT], None]
+ExecuteHookT = Callable[[ExecuteContext], None]
 
 @dataclass
 class CommandDefinition:

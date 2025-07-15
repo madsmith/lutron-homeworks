@@ -11,14 +11,14 @@ async def test_basic_emit_and_subscribe():
         received.append(data)
 
     token = bus.subscribe('test_event', callback)
-    await bus.emit('test_event', 'hello')
+    bus.emit('test_event', 'hello')
     # Let the event loop run to process the callback
     await asyncio.sleep(0.01)
     assert received == ['hello']
 
     # Test unsubscribe
     assert bus.unsubscribe(token) is True
-    await bus.emit('test_event', 'world')
+    bus.emit('test_event', 'world')
     await asyncio.sleep(0.01)
     assert received == ['hello']  # Should not change
     # Unsubscribing again should return True
@@ -37,21 +37,21 @@ async def test_multiple_callbacks():
 
     token1 = bus.subscribe('evt', cb1)
     token2 = bus.subscribe('evt', cb2)
-    await bus.emit('evt', 42)
+    bus.emit('evt', 42)
     await asyncio.sleep(0.01)
     assert received1 == [42]
     assert received2 == [42]
 
     # Unsubscribe one and check only the other is called
     assert bus.unsubscribe(token1) is True
-    await bus.emit('evt', 99)
+    bus.emit('evt', 99)
     await asyncio.sleep(0.01)
     assert received1 == [42]  # No change
     assert received2 == [42, 99]
 
     # Unsubscribe the second
     assert bus.unsubscribe(token2) is True
-    await bus.emit('evt', 123)
+    bus.emit('evt', 123)
     await asyncio.sleep(0.01)
     assert received2 == [42, 99]  # No change
 
@@ -64,10 +64,10 @@ async def test_once():
         received.append(data)
 
     token = bus.once('evt', cb)
-    await bus.emit('evt', 1)
+    bus.emit('evt', 1)
     await asyncio.sleep(0.01)
     assert received == [1]
-    await bus.emit('evt', 2)
+    bus.emit('evt', 2)
     await asyncio.sleep(0.01)
     assert received == [1]  # Should not be called again
     # Unsubscribing after it has already been called should return True
@@ -77,7 +77,7 @@ async def test_once():
 async def test_no_callbacks():
     bus = EventBus()
     # Should not raise
-    await bus.emit('no_listeners', 'data')
+    bus.emit('no_listeners', 'data')
 
 @pytest.mark.asyncio
 async def test_sync_and_async_callbacks():
@@ -110,7 +110,7 @@ async def test_sync_and_async_callbacks():
     token3 = bus.subscribe('mixed_event', sync_callback_returns_coroutine)
     
     # Emit event
-    await bus.emit('mixed_event', 'test_data')
+    bus.emit('mixed_event', 'test_data')
     
     # Let event loop process all callbacks
     await asyncio.sleep(0.05)
@@ -130,7 +130,7 @@ async def test_sync_and_async_callbacks():
     async_received.clear()
     sync_delayed_received.clear()
     
-    await bus.emit('mixed_event', 'new_data')
+    bus.emit('mixed_event', 'new_data')
     await asyncio.sleep(0.05)
     
     # Verify no callbacks were executed

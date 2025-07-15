@@ -51,7 +51,7 @@ class EventBus:
         self._nonce: int = 0
         self._loop = asyncio.get_event_loop()
 
-    async def emit(self, event: EventT, data: Any = None):
+    def emit(self, event: EventT, data: Any = None):
         """
         Emit an event by name. Triggers all subscribers to that event name and any matching regex pattern.
         """

@@ -164,10 +164,20 @@ class TestLutronDatabase:
         # Add filter before loading data
         database.enable_filter("name_replace", ["Rec Cans", "Recessed Cans"])
         database.enable_filter("strip_numeric_suffix")
+        database.enable_filter("subtype_fix", ["name", "Chandelier", "CHANDELIER"])
+        database.enable_filter("subtype_fix", ["iid", 222, "LAMP"])
         database.load()
         
         outputs = database.getOutputs()
+        for output in outputs:
+            print(output)
         output_names = {output.name for output in outputs}
+
+        count_chandeliers = len([output for output in outputs if output.output_type == "CHANDELIER"])
+        assert count_chandeliers == 2
+        
+        count_lamps = len([output for output in outputs if output.output_type == "LAMP"])
+        assert count_lamps == 1
         
         # Check that "Rec Cans" has been replaced with "Recessed Cans"
         assert "Stairwell Rec Cans 4" not in output_names

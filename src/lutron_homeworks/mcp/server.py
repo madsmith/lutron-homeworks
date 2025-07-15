@@ -295,6 +295,36 @@ class LutronMCPTools:
 
     @mcp_tool(tags={"control", "area"})
     @error_handler
+    @tracer.start_as_current_span("get_area_level")
+    async def get_area_level(self, area_id: int):
+        """
+        Get the level of an "Area".  The "Area" is a group of outputs that are controlled together.
+        Generally it represents a room or zone in the home.  The result is the average level of all
+        outputs in the area.
+        
+        Args:
+            area_id: The IntegrationID of the area
+            
+        Returns:
+            float: The level of the area as a float between 0 and 100
+        """
+        area = self.database.getAreasById(area_id)
+        if area is None:
+            raise RuntimeError(f"Area {area_id} not found")
+
+        outputs = self.database.getOutputs()
+        values = []
+        for output in outputs:
+            if output.parent_db_id == area_id:
+                values.append(output.level)
+        
+        
+        command = AreaCommand.get_zone_level(area_id)
+        response = await self.client.execute_command(command)
+        return response.data
+
+    @mcp_tool(tags={"control", "area"})
+    @error_handler
     @tracer.start_as_current_span("set_area_level")
     async def set_area_level(self, area_id: int, level: int):
         """

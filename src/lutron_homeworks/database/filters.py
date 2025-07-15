@@ -1,5 +1,5 @@
 import re
-
+from typing import Any
 from .types import LutronDBEntity
 
 class Filter:
@@ -74,13 +74,20 @@ class SubtypeFixFilter(Filter, filter_name='subtype_fix'):
     """
     Fix the subtype of an entity, replacing the old subtype with the new subtype if it matches the name.
     """
-    def __init__(self, name_match: str, subtype: str):
-        self.name_match = name_match
-        self.subtype = subtype
+    def __init__(self, match_key, match_value: Any, new_subtype: str):
+        self.match_key = match_key
+        self.match_value = match_value
+        self.new_subtype = new_subtype
     
     def __call__(self, entity: LutronDBEntity) -> LutronDBEntity:
-        if self.name_match in entity.name:
-            entity.subtype = self.subtype
+        def matches(entity: LutronDBEntity) -> bool:
+            target = getattr(entity, self.match_key)
+            if isinstance(self.match_value, str):
+                return self.match_value in target
+            return self.match_value == target
+
+        if matches(entity):
+            entity.subtype = self.new_subtype
         return entity
 
 class TypeSuffixFilter(Filter, filter_name='type_suffix'):

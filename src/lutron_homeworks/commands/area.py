@@ -1,8 +1,15 @@
+import asyncio
 from enum import Enum
-from typing import Union
+from statistics import fmean
+from typing import Any, List, Union
 
-from ..types import CommandDefinition as Cmd
-from .base import CommandResponseProcessors, LutronCommand, CommandSchema
+from ..types import (
+    CommandDefinition as Cmd,
+    LutronSpecialEvents,
+    ExecuteContext,
+    UnsubscribeFnT
+)
+from .base import CommandSchema, CommandResponseProcessors, LutronCommand
 
 class AreaAction(Enum):
     ZONE_LEVEL       = 1          # Set/Get Zome Level
@@ -12,7 +19,7 @@ class AreaAction(Enum):
     SCENE            = 6          # Set/Get Scene
     
 area_command_definitions = [
-    Cmd(AreaAction.ZONE_LEVEL, None, no_response=True),
+    Cmd(AreaAction.ZONE_LEVEL, None),
     Cmd.SET(AreaAction.START_RAISE, None, no_response=True),
     Cmd.SET(AreaAction.START_LOWER, None, no_response=True),
     Cmd.SET(AreaAction.STOP_RAISE_LOWER, None, no_response=True),
@@ -47,6 +54,10 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
 
         self.iid = iid
 
+        if self.action == AreaAction.ZONE_LEVEL:
+            self.execute_hook = self._multi_output_aggregator
+            
+
     
     @classmethod
     def set_zone_level(cls, iid: int, level: float) -> 'AreaCommand':
@@ -60,6 +71,16 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
         cmd = cls(iid, AreaAction.ZONE_LEVEL)
         return cmd.set([level])
 
+    @classmethod
+    def get_zone_level(cls, iid: int) -> 'AreaCommand':
+        """
+        Get the zone level.
+
+        Args:
+            iid (int): The IntegrationID of the area
+        """
+        return cls(iid, AreaAction.ZONE_LEVEL)
+        
     @classmethod
     def start_raise(cls, iid: int) -> 'AreaCommand':
         """
@@ -110,3 +131,32 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
             scene (int): The scene to set
         """
         return cls(iid, AreaAction.SCENE).set([scene])
+
+    @classmethod
+    def _multi_output_aggregator(cls, context: ExecuteContext):
+
+        collected_outputs = []
+        def _collect_output(event_data: List[Any], future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
+            collected_outputs.append(event_data)
+        
+        def _command_complete(event_data: Any, future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
+            average_level = None
+            if len(collected_outputs) > 0:
+                average_level = fmean([output[2] for output in collected_outputs])
+            unsubscribe_all()
+            result = {
+                "average_level": average_level,
+                "outputs": [{"iid": output[0], "level": output[2]} for output in collected_outputs]
+            }
+            future.set_result(result)
+
+        # Subscribe to OUTPUT events
+        client = context.client
+        event_tokens = context.event_tokens
+        future = context.future
+        unsubscribe_all = context.unsubscribe_all
+
+        event_tokens.append(client.subscribe("OUTPUT", lambda event_data: _collect_output(event_data, future, unsubscribe_all)))
+        event_tokens.append(client.subscribe(LutronSpecialEvents.CommandPrompt.value, lambda event_data: _command_complete(event_data, future, unsubscribe_all)))
+
+        

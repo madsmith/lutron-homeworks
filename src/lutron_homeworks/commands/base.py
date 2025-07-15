@@ -23,7 +23,9 @@ from ..types import (
     CustomHandlerT,
     CommandType,
     CommandError,
-    CommandTimeout
+    CommandTimeout,
+    ExecuteHookT,
+    ExecuteContext
 )
 from ..constants import *
 
@@ -251,11 +253,13 @@ class LutronCommand(Generic[ActionT]):
         else:
             raise ValueError(f"Action {action} is not a valid get or set action")
         
-        self.set_params: Optional[List[Any]] = None
+        self.set_params: List[Any] | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
-        self.custom_event: Optional[str] = None
-        self.custom_handler: Optional[CustomHandlerT] = None
+        self.custom_event: str | None = None
+        self.custom_handler: CustomHandlerT | None = None
+
+        self.execute_hook: ExecuteHookT = self._default_execute_hook
         
 
     @property
@@ -470,15 +474,18 @@ class LutronCommand(Generic[ActionT]):
             for token in event_tokens:
                 lutron_client.unsubscribe(token)
 
+        context = ExecuteContext(lutron_client, event_tokens, future, unsubscribe_all)
+
         formatted_command = self.formatted_command
         
         # Create closures that bind this future and unsubscribe function
-        response_handler = lambda event_data: self.handle_response(event_data, future, unsubscribe_all)
+        # response_handler = lambda event_data: self.handle_response(event_data, future, unsubscribe_all)
         error_handler = lambda event_data: self.handle_error(event_data, future, unsubscribe_all)
         
         # Subscribe to relevant events
-        if not self.no_response:
-            event_tokens.append(lutron_client.subscribe(self.command_name, response_handler))
+        # if not self.no_response:
+        #     event_tokens.append(lutron_client.subscribe(self.command_name, response_handler))
+        self.execute_hook(context)
         event_tokens.append(lutron_client.subscribe("ERROR", error_handler))
         
         if self.custom_handler is not None:
@@ -532,3 +539,9 @@ class LutronCommand(Generic[ActionT]):
             # Ensure timeout task is cancelled
             if timeout_task and not timeout_task.done():
                 timeout_task.cancel()
+
+    def _default_execute_hook(self, context: ExecuteContext):
+        response_handler = lambda event_data: self.handle_response(event_data, context.future, context.unsubscribe_all)
+
+        if not self.no_response:
+            context.event_tokens.append(context.client.subscribe(self.command_name, response_handler))
