@@ -306,22 +306,25 @@ class LutronMCPTools:
             area_id: The IntegrationID of the area
             
         Returns:
-            float: The level of the area as a float between 0 and 100
+            dict: Containing the "average_level" and "outputs" keys where "average_level" is the 
+            average level of all outputs in the area and "outputs" is a list of output objects
+            with the "iid" and "level" keys
         """
-        area = self.database.getAreasById(area_id)
-        if area is None:
-            raise RuntimeError(f"Area {area_id} not found")
+        # area = self.database.getAreasById(area_id)
+        # if area is None:
+        #     raise RuntimeError(f"Area {area_id} not found")
 
-        outputs = self.database.getOutputs()
-        values = []
-        for output in outputs:
-            if output.parent_db_id == area_id:
-                values.append(output.level)
+        # outputs = self.database.getOutputs()
+        # values = []
+        # for output in outputs:
+        #     if output.parent_db_id == area_id:
+        #         values.append(output.level)
         
         
         command = AreaCommand.get_zone_level(area_id)
         response = await self.client.execute_command(command)
-        return response.data
+
+        return response
 
     @mcp_tool(tags={"control", "area"})
     @error_handler
