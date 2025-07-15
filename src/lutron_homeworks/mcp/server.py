@@ -42,6 +42,8 @@ def error_handler(fn):
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Internal Tool Error: '{fn.__name__}': [{type(e).__name__}] {e}")
             raise InternalToolError(e)
@@ -317,12 +319,12 @@ class LutronMCPTools:
     
     def _validate_level(self, level: float):
         if level < 0 or level > 100:
-            raise RuntimeError(f"Level {level} is not between 0 and 100")
+            raise ValueError(f"Level {level} is not between 0 and 100")
 
     def _validate_subtype(self, subtype: str):
         type_map = self.config.type_map
         if subtype not in type_map:
-            raise ValueError(f"Invalid subtype: {subtype}")
+            raise ValueError(f"Invalid subtype: {subtype}. Valid subtypes are: {type_map.keys()}")
 
     def _build_search_re(self, name: str) -> re.Pattern:
         synonyms = self.config.synonyms
