@@ -87,6 +87,41 @@ class TestLutronDatabase:
         assert "Shade 002" in output_names
         assert "Guest Room Shade" in output_names
 
+
+    def test_get_outputs_by_custom_type(self, database: LutronDatabase):
+        database.apply_custom_type_map({
+            "shade": ["SYSTEM_SHADE"],
+            "light": ["INC"]
+        })
+
+        database.load()
+        outputs = database.getOutputs()
+
+        # Verify all returned items are LutronOutput instances
+        assert all(isinstance(output, LutronOutput) for output in outputs)
+        
+        # Verify we get the expected number of outputs from the sample XML
+        # Sample XML has 8 outputs in total
+        assert len(outputs) == 20
+
+        count_shades = len([output for output in outputs if output.output_type == "SYSTEM_SHADE"])
+        assert count_shades == 0
+
+        count_lights = len([output for output in outputs if output.output_type == "INC"])
+        assert count_lights == 0
+
+        count_shades = len([output for output in outputs if output.output_type == "shade"])
+        assert count_shades == 8
+
+        count_lights = len([output for output in outputs if output.output_type == "light"])
+        assert count_lights == 12
+        
+        # Verify some specific outputs are present
+        output_names = {output.name for output in outputs}
+        assert "Shade 001" in output_names
+        assert "Shade 002" in output_names
+        assert "Guest Room Shade" in output_names
+
     def test_get_areas(self, database: LutronDatabase):
         database.load()
         areas = database.getAreas()

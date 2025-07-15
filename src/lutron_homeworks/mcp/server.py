@@ -70,6 +70,7 @@ class LutronMCPTools:
     #================================================================
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("get_areas")
     def get_areas(self) -> list[LutronArea]:
         """
@@ -86,6 +87,7 @@ class LutronMCPTools:
         return areas
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("get_outputs")
     def get_outputs(self) -> list[LutronOutput]:
         """
@@ -101,6 +103,7 @@ class LutronMCPTools:
         return outputs
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("get_output_by_iid")
     def get_output_by_iid(self, iid: int) -> LutronOutput | None:
         """
@@ -119,7 +122,50 @@ class LutronMCPTools:
         output = self.database.getOutputsByIID(iid)
         return output
 
+
     @mcp_tool
+    @error_handler
+    @tracer.start_as_current_span("get_custom_output_subtypes")
+    def get_custom_output_subtypes(self) -> list[str]:
+        """
+        Get a list of all custom output subtypes.
+        
+        Retrieves a list of all custom output subtypes defined in the Lutron database.
+        This is useful when you need to access all custom output subtypes in the system.
+        
+        Returns:
+            list[str]: A list of custom output subtypes
+        """
+        type_map = self.config.type_map
+
+        return list(type_map.keys())
+        
+    
+    @mcp_tool
+    @error_handler
+    @tracer.start_as_current_span("get_outputs_by_subtype")
+    def get_outputs_by_subtype(self, subtype: str) -> list[LutronOutput]:
+        """
+        Get all outputs of a specific subtype.
+        
+        Retrieves a list of all outputs (lights, shades, etc.) of a specific subtype.
+        This is useful when you need to access all outputs of a specific type.
+        
+        Args:
+            subtype (str): The subtype of the output to retrieve
+            
+        Returns:
+            list[LutronOutput]: A list of LutronOutput objects representing all outputs of the specified subtype
+        """
+        type_map = self.config.type_map
+        if subtype not in type_map:
+            raise ValueError(f"Invalid subtype: {subtype}")
+        
+        outputs = self.database.getOutputsByType(subtype)
+        return outputs
+
+    @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("get_entities")
     def get_entities(self) -> list[LutronEntity]:
         """
@@ -133,42 +179,51 @@ class LutronMCPTools:
             list[LutronEntity]: A list of LutronEntity objects representing all entities in the system
         """
         entities = self.database.getEntities()
-        for entity in entities:
-            print(entity)
+        
         return entities
 
     @mcp_tool
     @error_handler
     @tracer.start_as_current_span("find_area_by_name")
-    def find_areas_by_name(self, name: str) -> list[LutronEntity]:
+    def find_areas_by_name(self, name: str) -> list[LutronArea]:
         """
         Find areas in the database by name. Returns any areas that match the sequence
-        of words in the name.  Fuzzing matching against a limited list of synonyms is
+        of words in the name.  Fuzzy matching against a limited list of synonyms is
         also applied in the search.
 
         Args:
             name (str): The name to search for
 
         Returns:
-            list[LutronEntity]: A list of LutronEntity objects representing the 
+            list[LutronArea]: A list of LutronArea objects representing the 
             areas that match the search, or an empty list if no matches are found
         """
-        # Convert name into a regex pattern
-        name_re = self._build_search_re(name)
+        return self._do_search(name, self.database.getAreas())
 
-        results = []
+    @mcp_tool
+    @error_handler
+    @tracer.start_as_current_span("find_output_by_name")
+    def find_outputs_by_name(self, name: str) -> list[LutronOutput]:
+        """
+        Find outputs in the database by name. Returns any outputs that match the sequence
+        of words in the name.  Fuzzy matching against a limited list of synonyms is
+        also applied in the search.
 
-        for entity in self.database.getAreas():
-            if name_re.match(entity.path.lower()):
-                results.append(entity)
+        Args:
+            name (str): The name to search for
 
-        return results
+        Returns:
+            list[LutronOutput]: A list of LutronOutput objects representing the 
+            outputs that match the search, or an empty list if no matches are found
+        """
+        return self._do_search(name, self.database.getOutputs())
 
     #================================================================
     # Lutron Server tools
     #================================================================
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("get_output_level")
     async def get_output_level(self, iid: int) -> float:
         """
@@ -189,6 +244,7 @@ class LutronMCPTools:
         return response.data
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("set_output_level")
     async def set_output_level(self, iid: int, level: float):
         """
@@ -211,6 +267,7 @@ class LutronMCPTools:
         await self.client.execute_command(command)
 
     @mcp_tool
+    @error_handler
     @tracer.start_as_current_span("set_area_level")
     async def set_area_level(self, area_id: int, level: int):
         """
@@ -228,7 +285,7 @@ class LutronMCPTools:
         self._validate_level(level)
         
         command = AreaCommand.set_zone_level(area_id, level)
-        print(command.formatted_command)
+
         await self.client.execute_command(command)
 
     #================================================================
@@ -265,6 +322,19 @@ class LutronMCPTools:
             name_pattern += ".*"
         
         return re.compile(name_pattern)
+
+    def _do_search(self, name: str, objects: list[LutronEntity]) -> list[LutronEntity]:
+        results = []
+
+        # Build the regex pattern
+        name_re = self._build_search_re(name)
+
+        for entity in objects:
+            if name_re.match(entity.path.lower()):
+                results.append(entity)
+        
+        return results
+
 
 @tracer.start_as_current_span("run_server")
 async def run_server(args):
@@ -308,6 +378,11 @@ async def run_server(args):
     loader = LutronXMLDataLoader(config.database_address, "cache")
     loader.set_cache_only(config.cache_only)
     database = LutronDatabase(loader)
+
+    # Apply custom type map to database
+    with tracer.start_as_current_span("apply_custom_type_map"):
+        if config.type_map:
+            database.apply_custom_type_map(config.type_map)
 
     # Apply filters to database
     with tracer.start_as_current_span("apply_filters"):

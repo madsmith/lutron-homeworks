@@ -23,6 +23,9 @@ class LutronDatabase:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.loader = loader
 
+        self._type_map: dict[str, list[str]] | None = None
+        self._subtype_to_custom_type_map: dict[str, str] | None = None
+
     def load(self):
         xml = self.loader.load_xml()
         if xml is None:
@@ -39,6 +42,33 @@ class LutronDatabase:
             return
         
         self._filters.append(filter)
+
+    def apply_custom_type_map(self, type_map: dict[str, list[str]]):
+        """
+        Apply a mapping from lutron types to custom types to the database.
+        When a custom type map is applied, only outputs with mapped subtypes
+        are allowed to be added to the database. Type map is a mapping from
+        custom type to lutron object subtypes.
+        """
+        self._type_map = type_map
+
+        self._subtype_to_custom_type_map = {
+            subtype: custom_type 
+            for custom_type, subtypes in type_map.items() 
+            for subtype in subtypes
+        }
+
+        # Remap any existing entities
+        entities = {}
+        for db_id, entity in self._entities.items():
+            if entity.type == EntityType.OUTPUT:
+                if entity.subtype in self._subtype_to_custom_type_map:
+                    entity.subtype = self._subtype_to_custom_type_map[entity.subtype]
+                    entities[db_id] = entity
+            else:
+                # Other entities are not affected by custom type map
+                entities[db_id] = entity
+        self._entities = entities
 
     def _apply_filters(self, entity: LutronDBEntity) -> LutronDBEntity:
         for filter in self._filters:
@@ -92,6 +122,7 @@ class LutronDatabase:
             if outputs is not None:
                 for j, output in enumerate(outputs.findall("Output")):
                     output_id = self._generate_output_id(output, area_id, j)
+                    
                     output_data = {
                         "db_id": output_id,
                         "iid": output.get("IntegrationID"),
@@ -103,6 +134,14 @@ class LutronDatabase:
                     }
                     entity = LutronDBEntity.from_dict(output_data)
                     entity = self._apply_filters(entity)
+
+                    if self._subtype_to_custom_type_map is not None:
+                        if entity.subtype in self._subtype_to_custom_type_map:
+                            entity.subtype = self._subtype_to_custom_type_map[entity.subtype]
+                        else:
+                            # Drop outputs that don't match the custom type map
+                            continue
+                    
                     self._entities[entity.db_id] = entity
                     entity.with_path(self.getPath(entity.db_id))
 

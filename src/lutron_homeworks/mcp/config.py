@@ -29,6 +29,7 @@ class LutronConfig:
         self._cache_only: bool | None = cache_only
         self._filters: list[dict[str, list[list[Any]]]] | None = None
         self._synonyms: list[list[str]] | None = None
+        self._type_map: list[str] | None = None
         self._config: DictConfig | ListConfig | None = None
 
         # Load from config file if provided
@@ -125,6 +126,13 @@ class LutronConfig:
             return self._synonyms
         synonyms = self._config_get(None, "lutron.database.synonyms", [])
         return synonyms
+
+    @property
+    def type_map(self) -> dict[str, list[str]]:
+        if self._type_map:
+            return self._type_map
+        type_map = self._config_get(None, "lutron.database.type_map", [])
+        return type_map
     
     def _config_get(self, env_key: str | None, config_key: str, default: Any = None):
         if env_key is not None:
