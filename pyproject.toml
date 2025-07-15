@@ -21,6 +21,7 @@ license = {text = "MIT"}
 [project.scripts]
 mcp-lutron-homeworks = "lutron_homeworks.mcp.__main__:main"
 mcp-client = "scripts.client:main"
+mcp-proxy = "mcp_proxy.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
