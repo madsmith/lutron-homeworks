@@ -468,4 +468,4 @@ async def run_server(args):
         }
 
     with tracer.start_as_current_span("MCP Server"):
-        await server.run_async(transport, **transport_kwargs)
+        await server.run_async(transport, show_banner=False, **transport_kwargs)
