@@ -23,7 +23,7 @@ area_command_definitions = [
     Cmd(AreaAction.ZONE_LEVEL, None),
     Cmd.SET(AreaAction.START_RAISE, None, no_response=True),
     Cmd.SET(AreaAction.START_LOWER, None, no_response=True),
-    Cmd.SET(AreaAction.STOP_RAISE_LOWER, None, no_response=True),
+    Cmd.SET(AreaAction.STOP_RAISE_LOWER, None),
     # TODO: handle non-response from invalid scene numbers
     Cmd(AreaAction.SCENE, CommandResponseProcessors.to_int_or_unknown),
 ]
@@ -57,7 +57,8 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
 
         if self.action == AreaAction.ZONE_LEVEL:
             self.execute_hook = self._multi_output_aggregator
-            
+        elif self.action == AreaAction.STOP_RAISE_LOWER:
+            self.execute_hook = self._multi_output_aggregator
 
     
     @classmethod

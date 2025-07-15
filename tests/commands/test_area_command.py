@@ -187,3 +187,37 @@ async def test_set_and_get_zone_level(lutron_client: LutronHomeworksClient):
     set_cmd = AreaCommand.set_zone_level(TEST_IID, original_value)
     await set_cmd.execute(lutron_client)
     logger.debug(f"Restored zone {TEST_IID} to original level: {original_value}")
+
+@pytest.mark.asyncio
+async def test_stop_raise_lower(lutron_client: LutronHomeworksClient):
+    """Test AreaCommand.stop_raise_lower() to stop raising or lowering a zone (IID)."""
+    # Set initial level to 0
+    cmd = AreaCommand.set_zone_level(TEST_IID, 0)
+    
+    # Execute the command
+    result = await cmd.execute(lutron_client)
+
+
+    await asyncio.sleep(3)
+    
+    # Set to raise
+    cmd = AreaCommand.start_raise(TEST_IID)
+    result = await cmd.execute(lutron_client)
+    assert result is None, "Result should be None for non-response commands"
+    
+    await asyncio.sleep(3)
+    
+    # Set to lower
+    cmd = AreaCommand.start_lower(TEST_IID)
+    result = await cmd.execute(lutron_client)
+    assert result is None, "Result should be None for non-response commands"
+    
+    await asyncio.sleep(1.5)
+    
+    # Stop raise/lower
+    cmd = AreaCommand.stop_raise_lower(TEST_IID)
+    result = await cmd.execute(lutron_client)
+    assert result is not None
+    assert "average_level" in result
+    assert result["average_level"] is not None
+    print(result)
