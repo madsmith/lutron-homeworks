@@ -10,6 +10,7 @@ from ..types import (
     UnsubscribeFnT
 )
 from .base import CommandSchema, CommandResponseProcessors, LutronCommand
+from .output import OutputAction
 
 class AreaAction(Enum):
     ZONE_LEVEL       = 1          # Set/Get Zome Level
@@ -137,9 +138,22 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
 
         collected_outputs = []
         def _collect_output(event_data: List[Any], future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
-            collected_outputs.append(event_data)
-        
-        def _command_complete(event_data: Any, future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
+            nonlocal collected_outputs
+            if event_data[1] == OutputAction.ZONE_LEVEL.value:
+                collected_outputs.append(event_data)
+         
+        async def _command_complete(event_data: Any, future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
+            # Implement a busy loop to wait for outputs to stabilize
+            prev_count = 0
+            current_count = len(collected_outputs)
+            
+            # Keep checking for new outputs until we stop receiving them or max iterations reached
+            while current_count > prev_count:
+                prev_count = current_count
+                await asyncio.sleep(0.1)  # Wait a short time
+                current_count = len(collected_outputs)
+            
+            # Once outputs have stabilized, calculate the average
             average_level = None
             if len(collected_outputs) > 0:
                 average_level = fmean([output[2] for output in collected_outputs])

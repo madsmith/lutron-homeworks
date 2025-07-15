@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import sys
 import pytest
 import pytest_asyncio
@@ -112,16 +113,18 @@ async def test_get_zone_level(lutron_client: LutronHomeworksClient):
 @pytest.mark.asyncio
 async def test_set_zone_level_format():
     """Test OutputCommand.set_zone_level() to set the level of a zone (IID)."""
-    # Create the output zone level command for IID
     cmd = AreaCommand.set_zone_level(TEST_IID, 50.0)
     
-    assert f"#AREA,{TEST_IID},1,50" in cmd.formatted_command
+    assert f"#AREA,{TEST_IID},1,50.0" in cmd.formatted_command
 
 @pytest.mark.asyncio
 async def test_set_zone_level(lutron_client: LutronHomeworksClient):
     """Test AreaCommand.set_zone_level() to set the level of a zone (IID)."""
     # Create the output zone level command for IID
-    cmd = AreaCommand.set_zone_level(TEST_IID, 50.0)
+    target_level = random.randint(0, 100)
+
+    # Create the output zone level command for IID
+    cmd = AreaCommand.set_zone_level(TEST_IID, target_level)
     
     # Execute the command against a real Lutron system
     result = await cmd.execute(lutron_client)
@@ -133,6 +136,7 @@ async def test_set_zone_level(lutron_client: LutronHomeworksClient):
     # Verify it has the expected components
     assert isinstance(result, dict)
     assert "average_level" in result
+    assert result["average_level"] is not None
     assert "outputs" in result
     assert 0 <= result["average_level"] <= 100
     assert len(result["outputs"]) > 0

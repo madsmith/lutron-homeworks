@@ -201,7 +201,6 @@ class LutronHomeworksClient:
             return None, None
 
         if line.startswith(PROMPT):
-            self.logger.debug("Command prompt received")
             self._eventbus.emit(LutronSpecialEvents.CommandPrompt.value, None)
             return None, None
 
