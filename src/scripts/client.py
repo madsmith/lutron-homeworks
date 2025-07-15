@@ -11,6 +11,13 @@ from mcp.shared.exceptions import McpError
 
 from fastmcp import Client
 
+import argparse
+
+class REPLArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # Instead of exiting, raise an exception you can handle
+        raise ValueError(f"Argument parsing error: {message}")
+
 async def list_items(client: Client, item_type: Optional[str] = None, verbose: int = 0):
     """List MCP server items of the specified type or all if none specified"""
     if item_type in (None, "all", "tools"):
@@ -100,31 +107,43 @@ async def call_tool(client: Client, tool_name: str, args: list[str] = []):
             print(f"Error: No tools matching '{tool_name}' found")
             return
     
+    def try_fast_parse(args: list[str]):
+        if len(args) > 1 and len(matched_tool.inputSchema['properties']) == 1:
+            [(param_name, param_def)] = matched_tool.inputSchema['properties'].items()
+            if param_def['type'] == 'string':
+                # Concatenate all args into a single string value
+                return {param_name: ' '.join(args)}
+        return None
+
     # Parse arguments
     if args:
-        try:
-            parser = argparse.ArgumentParser()
-            for param_name, param in matched_tool.inputSchema['properties'].items():
-                param_type = None
-                if param['type'] == 'integer':
-                    param_type = int
-                elif param['type'] == 'number':
-                    param_type = float
-                elif param['type'] == 'boolean':
-                    param_type = bool
-                elif param['type'] == 'string':
-                    param_type = str
-                parser.add_argument(param_name, type=param_type)
-            
-            parsed_args = parser.parse_args(args)
-            # print(parsed_args)
-            args = {k: v for k, v in vars(parsed_args).items() if v is not None}
-        except Exception as e:
-            print(f"Error parsing arguments: {e}")
-            return
-        except argparse.ArgumentError as e:
-            print(f"Error parsing arguments: {e}")
-            return
+        fast_parse = try_fast_parse(args)
+        if fast_parse is not None:
+            args = fast_parse
+        else:
+            try:
+                parser = REPLArgumentParser()
+                for param_name, param in matched_tool.inputSchema['properties'].items():
+                    param_type = None
+                    if param['type'] == 'integer':
+                        param_type = int
+                    elif param['type'] == 'number':
+                        param_type = float
+                    elif param['type'] == 'boolean':
+                        param_type = bool
+                    elif param['type'] == 'string':
+                        param_type = str
+                    parser.add_argument(param_name, type=param_type)
+                
+                parsed_args = parser.parse_args(args)
+                # print(parsed_args)
+                args = {k: v for k, v in vars(parsed_args).items() if v is not None}
+            except Exception as e:
+                print(f"Error parsing arguments: {e}")
+                return
+            except argparse.ArgumentError as e:
+                print(f"Error parsing arguments: {e}")
+                return
     
     try:
         print(f"Calling {matched_tool.name} with arguments: {args}")
