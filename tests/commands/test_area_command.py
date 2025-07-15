@@ -153,28 +153,37 @@ async def test_set_and_get_zone_level(lutron_client: LutronHomeworksClient):
     # Create the commands for IID
     
     # First get current level
-    get_cmd = OutputCommand.get_zone_level(TEST_IID)
+    get_cmd = AreaCommand.get_zone_level(TEST_IID)
     original_level = await get_cmd.execute(lutron_client)
     logger.debug(f"Original level of zone {TEST_IID}: {original_level}")
+    assert original_level is not None
+    assert "average_level" in original_level
+    assert original_level["average_level"] is not None
+    original_value = original_level["average_level"]
+    
     
     # Set to a different level (50% if original wasn't 50%, otherwise 25%)
-    new_level = 75.0 if original_level != 75.0 else 25.0
-    set_cmd = OutputCommand.set_zone_level(TEST_IID, new_level)
+    new_level = 75.0 if original_value != 75.0 else 25.0
+    set_cmd = AreaCommand.set_zone_level(TEST_IID, new_level)
     await set_cmd.execute(lutron_client)
     logger.debug(f"Set zone {TEST_IID} to level: {new_level}")
-    
-    # Wait a moment for command to take effect
-    await asyncio.sleep(2)
+
+    # Wait for command to take effect (for real world inspection)
+    await asyncio.sleep(0.5)
     
     # Get level again to verify
-    get_cmd = OutputCommand.get_zone_level(TEST_IID)
+    get_cmd = AreaCommand.get_zone_level(TEST_IID)
     updated_level = await get_cmd.execute(lutron_client)
-    logger.debug(f"Updated level of zone {TEST_IID}: {updated_level}")
+    assert updated_level is not None
+    assert "average_level" in updated_level
+    assert updated_level["average_level"] is not None
+    updated_value = updated_level["average_level"]
+    logger.debug(f"Updated level of zone {TEST_IID}: {updated_value}")
     
     # Verify level was set (allow small tolerance for floating point)
-    assert abs(updated_level - new_level) < 0.1
+    assert abs(updated_value - new_level) < 0.1
     
     # Set back to original level
-    set_cmd = OutputCommand.set_zone_level(TEST_IID, original_level)
+    set_cmd = AreaCommand.set_zone_level(TEST_IID, original_value)
     await set_cmd.execute(lutron_client)
-    logger.debug(f"Restored zone {TEST_IID} to original level: {original_level}")
+    logger.debug(f"Restored zone {TEST_IID} to original level: {original_value}")
