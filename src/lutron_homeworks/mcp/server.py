@@ -211,12 +211,12 @@ class LutronMCPTools:
 
     @mcp_tool(tags={"database", "search"})
     @error_handler
-    @tracer.start_as_current_span("find_area_by_name")
-    def find_areas_by_name(self, name: str) -> list[LutronArea]:
+    @tracer.start_as_current_span("find_area_by_area_name")
+    def find_areas_by_area_name(self, name: str) -> list[LutronArea]:
         """
-        Find areas in the database by name. Returns any areas that match the sequence
-        of words in the name.  Fuzzy matching against a limited list of synonyms is
-        also applied in the search.
+        Find areas in the database by name of area (including heirarchical areas like floors). Returns
+        any areas that match the sequence of words in the name.  Fuzzy matching against a limited list
+        of synonyms is also applied in the search.
 
         Args:
             name (str): The name to search for
@@ -229,12 +229,12 @@ class LutronMCPTools:
 
     @mcp_tool(tags={"database", "search"})
     @error_handler
-    @tracer.start_as_current_span("find_output_by_name")
-    def find_outputs_by_name(self, name: str) -> list[LutronOutput]:
+    @tracer.start_as_current_span("find_output_by_output_name")
+    def find_outputs_by_output_name(self, name: str) -> list[LutronOutput]:
         """
-        Find outputs in the database by name. Returns any outputs that match the sequence
-        of words in the name.  Fuzzy matching against a limited list of synonyms is
-        also applied in the search.
+        Find outputs in the database by name of output (including heirarchical entities like areas
+        names and floor names). Returns any outputs that match the sequence of words in the name.
+        Fuzzy matching against a limited list of synonyms is also applied in the search.
 
         Args:
             name (str): The name to search for
