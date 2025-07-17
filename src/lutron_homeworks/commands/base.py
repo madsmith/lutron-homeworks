@@ -299,7 +299,6 @@ class LutronCommand(Generic[ActionT]):
             result.append(result_value)
             
         if all_fields_present and self.set_params:
-            print(f"Adding set params: {self.set_params}")
             result.extend(self.set_params)
         
         return f"{prefix}{','.join([str(x) for x in result])}"
