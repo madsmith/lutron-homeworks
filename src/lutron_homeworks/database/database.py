@@ -89,16 +89,16 @@ class LutronDatabase:
     def _generate_area_id(self, area_element: ET.Element, parent_key: str, sibling_index: int) -> str:
         iid = area_element.get('IntegrationID')
         if iid and iid != '0':
-            return iid
+            return f"A:{iid}"
         key = f"{parent_key}/area[{sibling_index}]"
-        return self._hash_str(key)
+        return f"DBA:{self._hash_str(key)}"
 
     def _generate_output_id(self, output_element: ET.Element, area_key: str, sibling_index: int) -> str:
         iid = output_element.get('IntegrationID')
         if iid and iid != '0':
-            return iid
+            return f"O:{iid}"
         key = f"{area_key}/output[{sibling_index}]"
-        return self._hash_str(key)
+        return f"DBO:{self._hash_str(key)}"
     
     def _walk_tree(self, element: ET.Element, parent_key: str = ""):
         area_elements = element.findall("Area")
