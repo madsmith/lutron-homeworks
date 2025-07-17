@@ -159,11 +159,13 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
             if len(collected_outputs) > 0:
                 average_level = fmean([output[2] for output in collected_outputs])
             unsubscribe_all()
-            result = {
-                "average_level": average_level,
-                "outputs": [{"iid": output[0], "level": output[2]} for output in collected_outputs]
-            }
-            future.set_result(result)
+
+            if not future.done():
+                result = {
+                    "average_level": average_level,
+                    "outputs": [{"iid": output[0], "level": output[2]} for output in collected_outputs]
+                }
+                future.set_result(result)
 
         # Subscribe to OUTPUT events
         client = context.client
