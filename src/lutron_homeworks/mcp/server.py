@@ -268,7 +268,7 @@ class LutronMCPTools:
         
         command = OutputCommand.get_zone_level(iid)
         response = await self.client.execute_command(command)
-        return response.data
+        return response
 
     @mcp_tool(tags={"control", "output"})
     @error_handler
