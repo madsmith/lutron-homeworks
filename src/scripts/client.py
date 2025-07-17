@@ -20,28 +20,70 @@ class REPLArgumentParser(argparse.ArgumentParser):
         raise ValueError(f"Argument parsing error: {message}")
 
 # Store the last fetched list of tools for the completer
-tool_names = []
+tools_list = []
+
+def get_tool_parameters_hint(tool_name):
+    """Get parameter hints for a given tool"""
+    matching_tool = next((t for t in tools_list if t.name == tool_name), None)
+    if not matching_tool or not matching_tool.inputSchema:
+        return ""
+    
+    # Extract required parameters from the schema
+    schema = matching_tool.inputSchema
+    required_params = schema.get("required", [])
+    param_hints = " ".join([f"<{param}>" for param in required_params])
+    
+    return f"{matching_tool.name} {param_hints}" if param_hints else None
 
 def tool_name_completer(text: str, state: int):
     """Tab completion function for readline"""
-    # Return matching tool names
-    print(f"Completing: {text} {state}")
-    matches = [name for name in tool_names if name.startswith(text)]
+    line_buffer = readline.get_line_buffer()
+    
+    # check if line buffer is exact match for any tool name
+    possible_tool_name = line_buffer.strip()
+    is_tool_name = any(t.name == possible_tool_name for t in tools_list)
+
+    # If there's already text in the buffer that contains a space,
+    # we're already past the tool name - don't offer completions but show parameter hints
+    if ' ' in line_buffer or is_tool_name:
+        # Already entered a tool name and working on arguments
+        tool_name = line_buffer.split(' ')[0]
+        
+        # If this is the first time showing parameters (state == 0),
+        # print the parameter hints to help the user
+        if state == 0:
+            param_hint = get_tool_parameters_hint(tool_name)
+            if param_hint:
+                print(f"\n{param_hint}")
+                # Position cursor properly
+                print(f"\nmcp> {line_buffer}", end="", flush=True)
+            if not ' ' in line_buffer:
+                readline.insert_text(' ')
+                readline.redisplay()
+        return None
+    
+    # Strip leading spaces from text for comparison
+    text_to_match = text.strip()
+    
+    # Get matching tool names
+    matches = [t.name for t in tools_list if t.name.startswith(text_to_match)]
+    
+    # Return the next match or None if no more matches
     if state < len(matches):
         return matches[state]
     return None
 
 async def fetch_tool_list(client: Client):
     """Fetch the list of tools and update the completer"""
-    global tool_names
-    tools = await client.list_tools()
-    tool_names = [tool.name for tool in tools]
-    return tools
+    global tools_list
+    tools_list = await client.list_tools()
+    return tools_list
 
 async def list_items(client: Client, item_type: Optional[str] = None, verbose: int = 0):
     """List MCP server items of the specified type or all if none specified"""
     if item_type in (None, "all", "tools"):
-        tools = await fetch_tool_list(client)
+        tools_data = await fetch_tool_list(client)
+        tools = tools_data
         if tools:
             print("Available tools:")
             for tool in tools:
