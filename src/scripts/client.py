@@ -1,27 +1,47 @@
-import asyncio
 import argparse
+import asyncio
+import atexit
 import json
 import os
+import readline
 import shlex
 import sys
 import traceback
+from functools import partial
 from typing import Dict, List, Any, Optional
 from mcp.shared.exceptions import McpError
 
 
 from fastmcp import Client
 
-import argparse
-
 class REPLArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Instead of exiting, raise an exception you can handle
         raise ValueError(f"Argument parsing error: {message}")
 
+# Store the last fetched list of tools for the completer
+tool_names = []
+
+def tool_name_completer(text: str, state: int):
+    """Tab completion function for readline"""
+    # Return matching tool names
+    print(f"Completing: {text} {state}")
+    matches = [name for name in tool_names if name.startswith(text)]
+    if state < len(matches):
+        return matches[state]
+    return None
+
+async def fetch_tool_list(client: Client):
+    """Fetch the list of tools and update the completer"""
+    global tool_names
+    tools = await client.list_tools()
+    tool_names = [tool.name for tool in tools]
+    return tools
+
 async def list_items(client: Client, item_type: Optional[str] = None, verbose: int = 0):
     """List MCP server items of the specified type or all if none specified"""
     if item_type in (None, "all", "tools"):
-        tools = await client.list_tools()
+        tools = await fetch_tool_list(client)
         if tools:
             print("Available tools:")
             for tool in tools:
@@ -84,7 +104,7 @@ def format_schema(schema: dict[str, Any], indent: int = 4) -> str:
 async def call_tool(client: Client, tool_name: str, args: list[str] = []):
     """Call an MCP tool with the provided arguments"""
     # Get available tools to validate the tool name
-    tools = await client.list_tools()
+    tools = await fetch_tool_list(client)
 
     # Check for exact match first
     exact_match = next((t for t in tools if t.name == tool_name), None)
@@ -207,6 +227,32 @@ def print_help():
     print("  help - Show this help message")
     print("  exit, quit, q - Exit the program\n")
 
+def setup_readline():
+    """Set up readline for command history and tab completion"""
+    if not os.path.exists(os.path.expanduser('~/.cache')):
+        os.makedirs(os.path.expanduser('~/.cache'))
+    history_file = os.path.expanduser('~/.cache/.mcp_history')
+    try:
+        readline.read_history_file(history_file)
+        # Default history len is -1 (infinite), which may grow unruly
+        readline.set_history_length(1000)
+    except FileNotFoundError:
+        pass
+
+    # Make sure to write history on exit
+    atexit.register(lambda: readline.write_history_file(history_file))
+    
+    # Set up tab completion
+    readline.set_completer(tool_name_completer)
+    
+    # Different readline implementations use different commands
+    if 'libedit' in readline.__doc__:
+        # macOS uses libedit which requires a different binding syntax
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        # GNU readline uses this syntax
+        readline.parse_and_bind('tab: complete')
+
 async def interactive_client(connect_url):
     """Run the interactive MCP client"""
     print(f"Connecting to MCP server at {connect_url}...")
@@ -214,6 +260,8 @@ async def interactive_client(connect_url):
     should_exit = False
     replay_command = None
     
+    setup_readline()
+
     while not should_exit:
         try:
             async with Client(connect_url, timeout=1) as client:
@@ -231,6 +279,9 @@ async def interactive_client(connect_url):
                             replay_command = None
                         else:
                             command = input("\nmcp> ")
+                            command = command.strip()
+                            if command:
+                                readline.add_history(command)
                             replay_command = command
                         should_continue = await process_command(client, command)
                         replay_command = None
@@ -239,7 +290,7 @@ async def interactive_client(connect_url):
                             should_exit = True
                             break
                     except KeyboardInterrupt:
-                        print("\nUse 'exit' to quit")
+                        continue  # Skip to next iteration for a new prompt
                     except EOFError as e:
                         should_exit = True
                         print("\nExiting...")
