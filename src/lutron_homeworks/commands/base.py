@@ -497,7 +497,7 @@ class LutronCommand(Generic[ActionT]):
         
         # Send the command and handle any immediate errors
         try:
-            await lutron_client.send_command(formatted_command)
+            await lutron_client.send_raw(formatted_command)
         except Exception as e:
             # If command sending fails, set the exception on the future
             unsubscribe_all()

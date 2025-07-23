@@ -58,7 +58,8 @@ class LutronXMLDataLoader:
 
             return cache_xml
         except Exception as e:
-            self.logger.error("Failed to load XML from cache or server")
+            self.logger.error(f"Failed to Load XML Data: {e}")
+            raise
 
     
     def _parse_export_timestamp(self, xml: str | bytes) -> datetime | None:

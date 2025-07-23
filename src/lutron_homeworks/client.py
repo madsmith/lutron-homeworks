@@ -252,11 +252,11 @@ class LutronHomeworksClient:
     async def send_heartbeat(self):
         """Send a keep-alive/heartbeat command. Customize as needed."""
         self.logger.debug("Sending heartbeat...")
-        # Example: await self.send_command('NOOP')
+        # Example: await self.send_raw('NOOP')
         pass
 
     @tracer.start_as_current_span("Send Command")
-    async def send_command(self, command: str):
+    async def send_raw(self, command: str):
         async with self._lock:
             if not self.connected or self.writer is None:
                 raise ConnectionError("Not connected to Lutron server.")
@@ -341,7 +341,7 @@ class LutronHomeworksClient:
 
         if self.command_ready:
             self.logger.debug("Sending logout command...")
-            await self.send_command("LOGOUT")
+            await self.send_raw("LOGOUT")
             pass
         
         # Cancel background tasks

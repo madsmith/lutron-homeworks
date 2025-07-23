@@ -223,7 +223,7 @@ class TestLutronClient:
         system_response_holder = {}
         lutron_client.subscribe('system_response', lambda data: system_response_holder.update(data))
 
-        await lutron_client.send_command('?SYSTEM,1')
+        await lutron_client.send_raw('?SYSTEM,1')
         await asyncio.sleep(0.5)  # Wait for any responses/keepalive
         
         print(system_response_holder)
@@ -285,7 +285,7 @@ class TestLutronClientMockedServer:
         mock_lutron_server.add_command_response("?SYSTEM,2", "~SYSTEM,2,MockTest")
         
         # Send command
-        await mocked_client.send_command("?SYSTEM,2")
+        await mocked_client.send_raw("?SYSTEM,2")
         await asyncio.sleep(.5)  # Brief wait for response
         
         print("RESPONSE: ", response)
@@ -304,8 +304,8 @@ class TestLutronClientMockedServer:
         mock_lutron_server.set_disconnect_after_commands(2)
         
         # Send a couple of commands to trigger disconnect
-        await mocked_client.send_command("?SYSTEM,1")
-        await mocked_client.send_command("?SYSTEM,2")
+        await mocked_client.send_raw("?SYSTEM,1")
+        await mocked_client.send_raw("?SYSTEM,2")
         
         # Wait for disconnect detection in client's internal loop
         # The client's reader task should detect the disconnection
