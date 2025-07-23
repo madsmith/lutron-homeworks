@@ -381,8 +381,3 @@ class LutronHomeworksClient:
         
         self.connected = False
         self.command_ready = False
-
-    def __del__(self):
-        if not self._stop_event.is_set():
-            self.logger.debug("Closing connection on deletion...")
-            asyncio.create_task(self.close())
