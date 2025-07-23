@@ -95,7 +95,7 @@ class LutronXMLDataLoader:
                 
         return None
     
-    def _server_load(self, cache_timestamp: datetime) -> bytes | None:
+    def _server_load(self, cache_timestamp: datetime | None) -> bytes | None:
         """
         Connect to the server and stream just enough data to check the timestamp.
 

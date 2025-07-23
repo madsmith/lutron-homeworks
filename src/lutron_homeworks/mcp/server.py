@@ -2,10 +2,12 @@ import argparse
 import asyncio
 import importlib.metadata
 from fastmcp import FastMCP
+from fastmcp.server.server import Transport
 import logging
 from opentelemetry import trace
 import re
 import sys
+from typing import TypeVar
 import functools
 
 from lutron_homeworks.client import LutronHomeworksClient
@@ -48,6 +50,8 @@ def error_handler(fn):
             logger.error(f"Internal Tool Error: '{fn.__name__}': [{type(e).__name__}] {e}")
             raise InternalToolError(e)
     return wrapper
+
+LutronEntityT = TypeVar("LutronEntityT", bound=LutronEntity)
 
 class LutronMCPTools:
     def __init__(self, config: LutronConfig, client: LutronHomeworksClient, database: LutronDatabase):
@@ -391,14 +395,14 @@ class LutronMCPTools:
         
         return re.compile(name_pattern)
 
-    def _do_search(self, name: str, objects: list[LutronEntity]) -> list[LutronEntity]:
+    def _do_search(self, name: str, objects: list[LutronEntityT]) -> list[LutronEntityT]:
         results = []
 
         # Build the regex pattern
         name_re = self._build_search_re(name)
 
         for entity in objects:
-            if name_re.match(entity.path.lower()):
+            if entity.path is not None and name_re.match(entity.path.lower()):
                 results.append(entity)
         
         return results
@@ -488,6 +492,8 @@ async def run_server(args):
     tools.register_tools(server)
     
     transport = config.mode
+
+    assert isinstance(transport, Transport), f"Invalid transport: {transport}"
 
     if transport == 'stdio':
         transport_kwargs = {}

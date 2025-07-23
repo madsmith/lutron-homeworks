@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable
 
+
 class EntityType(str, Enum):
     AREA        = "area"
     OUTPUT      = "output"
@@ -14,34 +15,6 @@ class EntityType(str, Enum):
     def __repr__(self):
         return self.value
 
-
-@dataclass
-class LutronArea:
-    iid: int
-    name: str
-    path: str | None
-
-    def from_entity(entity: "LutronDBEntity"):
-        return LutronArea(
-            entity.iid,
-            entity.name,
-            entity.path
-        )
-
-@dataclass
-class LutronOutput:
-    iid: int
-    output_type: str
-    name: str
-    path: str | None
-
-    def from_entity(entity: "LutronDBEntity"):
-        return LutronOutput(
-            entity.iid,
-            entity.subtype,
-            entity.name,
-            entity.path
-        )
 
 @dataclass
 class LutronDBEntity:
@@ -75,5 +48,41 @@ class LutronDBEntity:
     def with_path(self, path: list[str]):
         self.path = " / ".join(path)
         return self
+
+@dataclass
+class LutronArea:
+    iid: int
+    name: str
+    path: str | None
+
+    @classmethod
+    def from_entity(cls, entity: LutronDBEntity):
+        assert entity.iid is not None, "Can not create LutronArea from entity with no iid"
+
+        return cls(
+            entity.iid,
+            entity.name,
+            entity.path
+        )
+
+@dataclass
+class LutronOutput:
+    iid: int
+    output_type: str
+    name: str
+    path: str | None
+
+    @classmethod
+    def from_entity(cls, entity: LutronDBEntity):
+        assert entity.iid is not None, "Can not create LutronArea from entity with no iid"
+        assert entity.subtype is not None, "Can not create LutronArea from entity with no subtype"
+
+        return cls(
+            entity.iid,
+            entity.subtype,
+            entity.name,
+            entity.path
+        )
+
 
 LutronEntity = LutronDBEntity | LutronArea | LutronOutput

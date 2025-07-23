@@ -1,9 +1,14 @@
 import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Callable, List, TypeVar, Union
+from typing import Any, Callable, List, TypeVar, Union, TYPE_CHECKING
 
 from lutron_homeworks.utils.events import SubscriptionToken
+
+if TYPE_CHECKING:
+    from lutron_homeworks.client import LutronHomeworksClient
+else:
+    LutronHomeworksClient = 'LutronHomeworksClient'
 
 class LutronSpecialEvents(Enum):
     AllEvents = "::[*]::"
@@ -23,13 +28,13 @@ UnsubscribeFnT = Callable[[], None]
 
 @dataclass
 class ExecuteContext:
-    client: "LutronHomeworksClient"
+    client: LutronHomeworksClient
     event_tokens: List[SubscriptionToken]
     future: asyncio.Future
     unsubscribe_all: UnsubscribeFnT
 
 # Custom handler type for command response processing
-CustomHandlerT = Callable[[Union[bytes, List[Any], None], asyncio.Future, UnsubscribeFnT], None]
+CustomHandlerT = Callable[[bytes | List[Any] | None, asyncio.Future, UnsubscribeFnT], None]
 ExecuteHookT = Callable[[ExecuteContext], None]
 
 @dataclass

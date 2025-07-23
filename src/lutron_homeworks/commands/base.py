@@ -7,7 +7,6 @@ from typing import (
     ClassVar,
     Dict,
     List,
-    Optional,
     Union,
     Callable,
     Tuple,
@@ -143,7 +142,7 @@ class CommandSchema:
         self.response_index_map: Dict[int, str] = self._parse_template(format_template)
         self.commands = {cmd.action: cmd for cmd in commands}
         
-    def command_def(self, action: Union[str, Enum]) -> Optional[CommandDefinition]:
+    def command_def(self, action: Union[int, Enum]) -> CommandDefinition | None:
         return self.commands.get(action)
     
     def _parse_template(self, template: str) -> Dict[int, str]:
@@ -169,7 +168,7 @@ class CommandSchema:
         
         return index_map
         
-    def get_field_index(self, field_name: str) -> Optional[int]:
+    def get_field_index(self, field_name: str) -> int | None:
         """Get the index of a named field in the response."""
         for i, field in self.response_index_map.items():
             if field == field_name:
@@ -197,7 +196,7 @@ class UnspecifiedCommandSchema(CommandSchema):
         self.response_index_map: Dict[int, str] = {}
         self._command_name: str = "UNSPECIFIED"
     
-    def get_field_index(self, field_name: str) -> Optional[int]:
+    def get_field_index(self, field_name: str) -> int | None:
         """Always return None for unspecified schema."""
         raise NotImplementedError("Command schema unspecified - subclass must define schema")
     
@@ -226,7 +225,7 @@ class LutronCommand(Generic[ActionT]):
 
         cls.schema = schema
         
-    def __init__(self, action: Union[str, ActionT]):
+    def __init__(self, action: Union[int, ActionT]):
         """
         Initialize base command with action and parameters.
         
@@ -319,7 +318,7 @@ class LutronCommand(Generic[ActionT]):
             current = current[part]
         return current.get(key_parts[-1], default)
     
-    def set(self, set_params: Optional[List[Any]] = None):
+    def set(self, set_params: List[Any] | None = None):
         assert self.definition.is_set, f"Action {self.action} is not a valid set action"
 
         self.command_type = CommandType.EXECUTE

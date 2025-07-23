@@ -27,9 +27,9 @@ class LutronConfig:
         self._listen_host: str | None = listen_host
         self._listen_port: int | None = listen_port
         self._cache_only: bool | None = cache_only
-        self._filters: list[dict[str, list[list[Any]]]] | None = None
+        self._filters: dict[str, list[list[Any]]] | None = None
         self._synonyms: list[list[str]] | None = None
-        self._type_map: list[str] | None = None
+        self._type_map: dict[str, list[str]] | None = None
         self._config: DictConfig | ListConfig | None = None
 
         # Load from config file if provided
@@ -60,7 +60,10 @@ class LutronConfig:
         if self._server_port:
             return self._server_port
         server_port = self._config_get("LUTRON_SERVER_PORT", "lutron.server.port", 23)
-        return server_port
+        try: 
+            return int(server_port)
+        except ValueError:
+            raise ValueError(f"Invalid server port: {server_port}")
     
     @property
     def username(self) -> str:
@@ -97,7 +100,10 @@ class LutronConfig:
         if self._listen_port:
             return self._listen_port
         port = self._config_get("LUTRON_MCP_PORT", "lutron.mcp.port", 8060)
-        return port
+        try:
+            return int(port)
+        except ValueError:
+            raise ValueError(f"Invalid listen port: {port}")
     
     @property
     def database_address(self) -> str:
@@ -111,13 +117,14 @@ class LutronConfig:
         if self._cache_only:
             return self._cache_only
         cache_only = self._config_get("LUTRON_CACHE_ONLY", "lutron.database.cache_only", False)
-        return cache_only
+        return bool(cache_only)
     
     @property
     def filters(self) -> dict[str, list[list[Any]]]:
         if self._filters:
             return self._filters
-        filters = self._config_get(None, "lutron.database.filters", {})
+        filters = self._config_get(None, "lutron.database.filters", [])
+        assert not isinstance(filters, str), "Filters must be a list of dictionaries"
         return filters
 
     @property
@@ -125,13 +132,15 @@ class LutronConfig:
         if self._synonyms:
             return self._synonyms
         synonyms = self._config_get(None, "lutron.database.synonyms", [])
+        assert not isinstance(synonyms, str), "Synonyms must be a list of lists of strings"
         return synonyms
 
     @property
     def type_map(self) -> dict[str, list[str]]:
         if self._type_map:
             return self._type_map
-        type_map = self._config_get(None, "lutron.database.type_map", [])
+        type_map = self._config_get(None, "lutron.database.type_map", {})
+        assert not isinstance(type_map, str), "Type map must be a dictionary"
         return type_map
     
     def _config_get(self, env_key: str | None, config_key: str, default: Any = None):

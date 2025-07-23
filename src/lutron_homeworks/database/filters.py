@@ -8,6 +8,9 @@ class Filter:
         FilterLibrary.register_filter(cls)
         super().__init_subclass__(**kwargs)
 
+    def __call__(self, entity: LutronDBEntity) -> LutronDBEntity:
+        raise NotImplementedError("Subclasses must implement __call__")
+
 class FilterLibrary:
     _filters: dict[str, type[Filter]] = {}
     

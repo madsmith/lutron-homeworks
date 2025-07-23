@@ -45,12 +45,14 @@ class ProxyConfig:
         
         # Check if we have MCP servers defined in config
         servers = self._config_get(None, "mcpServers", None)
+        assert isinstance(servers, dict), "MCP servers must be a dictionary"
 
         if servers:
             result = self._deep_copy(servers)
+            assert isinstance(result, dict), "MCP servers must be a dictionary"
             return result
         
-        return None
+        return {}
 
     
     def _deep_copy(self, obj) -> dict | list:

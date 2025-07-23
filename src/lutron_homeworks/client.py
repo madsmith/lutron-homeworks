@@ -2,7 +2,7 @@ import asyncio
 import logging
 from opentelemetry import trace
 import re
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List
 
 from .utils.events import EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 RE_IS_INTEGER = re.compile(r"^\-?\d+$")
 RE_IS_FLOAT = re.compile(r"^\-?\d+\.\d+$")
+
+if TYPE_CHECKING:
+    from lutron_homeworks.commands import LutronCommand
 
 class LutronHomeworksClient:
     def __init__(self, host, username=None, password=None, port=23, keepalive_interval=60):
@@ -52,7 +55,7 @@ class LutronHomeworksClient:
         return self._writer
     
     @tracer.start_as_current_span("Connect")
-    async def connect(self):
+    async def connect(self) -> bool:
         async with self._lock:
             self.logger.info(f"Connecting to {self.host}:{self.port}")
             try:
@@ -66,6 +69,7 @@ class LutronHomeworksClient:
                 self.connected = False
                 self.command_ready = False
                 self._reconnect_later()
+        return self.connected
 
     @tracer.start_as_current_span("Login")
     async def _login(self):
@@ -102,7 +106,7 @@ class LutronHomeworksClient:
             self.command_ready = False
             self._reconnect_later()
 
-    async def _read_until(self, end_bytes: bytes, timeout: float = None):
+    async def _read_until(self, end_bytes: bytes, timeout: float | None = None):
         """Read until the given prompt or timeout."""
 
         if timeout is None:
@@ -131,14 +135,14 @@ class LutronHomeworksClient:
         except asyncio.TimeoutError:
             raise TimeoutError(f"Timeout waiting for prompt: {end_bytes}")
 
-    async def _read_line(self, timeout: float = None):
+    async def _read_line(self, timeout: float | None = None):
         return await self._read_until(LINE_END.encode('ascii'), timeout=timeout)
 
-    async def _read_prompt(self, timeout: float = None):
+    async def _read_prompt(self, timeout: float | None = None):
         prompt_bytes = PROMPT.encode('ascii')
         return await self._read_until(prompt_bytes, timeout=timeout)
     
-    async def _write(self, data: str, timeout: float = None):
+    async def _write(self, data: str, timeout: float | None = None):
         """Write data to the server with an optional timeout.
         
         Args:

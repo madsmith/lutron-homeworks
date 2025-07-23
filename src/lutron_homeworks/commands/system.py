@@ -169,7 +169,7 @@ class SystemCommand(LutronCommand[SystemAction], schema=schema):
         cmd = cls(action=SystemAction.LOAD_SHED)
         return cmd.set([shed_value])
 
-    def _line_handler(self, line: Union[bytes, List[Any]], future: asyncio.Future, unsubscribe_all: Callable[[], None]):
+    def _line_handler(self, line: bytes | List[Any] | None, future: asyncio.Future, unsubscribe_all: Callable[[], None]):
         try:
             assert isinstance(line, bytes), "Handler received non-bytes data"
             future.set_result(line.decode('ascii').strip())
