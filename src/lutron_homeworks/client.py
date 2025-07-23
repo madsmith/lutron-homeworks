@@ -37,6 +37,7 @@ class LutronHomeworksClient:
         self._eventbus = EventBus()
         self.logger = logging.getLogger(self.__class__.__name__)
         self._lock = asyncio.Lock()
+        self._command_lock = asyncio.Lock()
         self._stop_event = asyncio.Event()
         self._reconnect_event = asyncio.Event()
 
@@ -281,9 +282,14 @@ class LutronHomeworksClient:
         """
         assert self.connected, "Please connect client before invoking commands."
         assert self.command_ready, "Client wasn't ready to receive commands."
-            
-        return await command.execute(self, timeout=timeout)
-
+        
+        if command.no_response:
+            return await command.execute(self, timeout=timeout)
+        else:
+            async with self._command_lock:
+                self.logger.debug(f"Executing command {command}")
+                return await command.execute(self, timeout=timeout)
+    
     def subscribe(self, event_name: EventT, callback) -> SubscriptionToken:
         """
         Subscript to events announced by the Lutron Homeworks server.
