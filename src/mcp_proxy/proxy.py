@@ -35,7 +35,7 @@ def main():
             name="Composite MCP Proxy"
         )
     
-    proxy.run()  # Defaults to stdio transport
+    proxy.run(show_banner=False)  # Defaults to stdio transport
 
 # Run locally via stdio for Claude Desktop
 if __name__ == "__main__":
