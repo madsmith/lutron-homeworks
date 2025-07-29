@@ -491,9 +491,7 @@ async def run_server(args):
     # Register all tool functions (to be implemented)
     tools.register_tools(server)
     
-    transport = config.mode
-
-    assert isinstance(transport, Transport), f"Invalid transport: {transport}"
+    transport = _validate_transport(config.mode)
 
     if transport == 'stdio':
         transport_kwargs = {}
@@ -508,3 +506,8 @@ async def run_server(args):
 
     with tracer.start_as_current_span("MCP Server"):
         await server.run_async(transport, show_banner=False, **transport_kwargs)
+
+def _validate_transport(transport: str) -> Transport:
+    if transport not in Transport.__args__:
+        raise ValueError(f"Invalid transport: {transport}")
+    return transport # type: ignore
