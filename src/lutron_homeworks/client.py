@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, List
 from .utils.events import EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
 from .constants import *
+from .commands import LutronCommand
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger(__name__)
