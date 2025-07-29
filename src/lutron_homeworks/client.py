@@ -294,10 +294,12 @@ class LutronHomeworksClient:
                 self.logger.debug(f"Executing command {command}")
                 return await command.execute(self, timeout=timeout)
     
-    def subscribe(self, event_name: EventT, callback) -> SubscriptionToken:
+    def subscribe(self, event_name: EventT | LutronCommand, callback) -> SubscriptionToken:
         """
         Subscript to events announced by the Lutron Homeworks server.
         """
+        if isinstance(event_name, LutronCommand):
+            event_name = event_name.schema.command_name
         return self._eventbus.subscribe(event_name, callback)
 
     def unsubscribe(self, token: SubscriptionToken):
