@@ -299,7 +299,7 @@ class LutronHomeworksClient:
         """
         Subscript to events announced by the Lutron Homeworks server.
         """
-        if (isinstance(event_name, type) and issubclass(event_name, LutronCommand) 
+        if ((isinstance(event_name, type) and issubclass(event_name, LutronCommand))
             or isinstance(event_name, LutronCommand)):
             event_name = event_name.schema.command_name
         elif isinstance(event_name, LutronSpecialEvents):
