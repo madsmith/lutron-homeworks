@@ -2,7 +2,7 @@ import asyncio
 import logging
 from opentelemetry import trace
 import re
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, Type
 
 from .utils.events import EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
@@ -295,12 +295,16 @@ class LutronHomeworksClient:
                 self.logger.debug(f"Executing command {command}")
                 return await command.execute(self, timeout=timeout)
     
-    def subscribe(self, event_name: EventT | LutronCommand, callback) -> SubscriptionToken:
+    def subscribe(self, event_name: EventT | LutronCommand | Type[LutronCommand] | LutronSpecialEvents, callback) -> SubscriptionToken:
         """
         Subscript to events announced by the Lutron Homeworks server.
         """
-        if isinstance(event_name, LutronCommand):
+        if (isinstance(event_name, type) and issubclass(event_name, LutronCommand) 
+            or isinstance(event_name, LutronCommand)):
             event_name = event_name.schema.command_name
+        elif isinstance(event_name, LutronSpecialEvents):
+            event_name = event_name.value
+
         return self._eventbus.subscribe(event_name, callback)
 
     def unsubscribe(self, token: SubscriptionToken):

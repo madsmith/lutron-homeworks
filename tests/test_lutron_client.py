@@ -279,7 +279,7 @@ class TestLutronClientMockedServer:
             print(f"Received event: {data}")
         
         mocked_client.subscribe('SYSTEM', response_handler)
-        mocked_client.subscribe(LutronSpecialEvents.AllEvents.value, print_event_handler)
+        mocked_client.subscribe(LutronSpecialEvents.AllEvents, print_event_handler)
         
         # Add a specific response for our test command
         mock_lutron_server.add_command_response("?SYSTEM,2", "~SYSTEM,2,MockTest")
