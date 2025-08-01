@@ -1,9 +1,11 @@
 from datetime import datetime
 import logging
+from opentelemetry import trace
 from pathlib import Path
 import re
 import requests
 
+tracer = trace.get_tracer(__name__)
 logger = logging.getLogger(__name__)
 
 class LutronXMLDataLoader:
@@ -22,6 +24,7 @@ class LutronXMLDataLoader:
     def set_cache_only(self, cache_only: bool):
         self._cache_only = cache_only
 
+    @tracer.start_as_current_span("Load XML")
     def load_xml(self):
         """
         Load the XML data from the Lutron server.
@@ -62,7 +65,7 @@ class LutronXMLDataLoader:
             logger.error(f"Failed to Load XML Data: {e}")
             raise
 
-    
+    @tracer.start_as_current_span("Parse Export Timestamp")
     def _parse_export_timestamp(self, xml: str | bytes) -> datetime | None:
         """
         Parse the export timestamp from a chunk of XML data.
