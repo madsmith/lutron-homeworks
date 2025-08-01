@@ -2,7 +2,7 @@ import asyncio
 import logging
 from opentelemetry import trace
 import re
-from typing import TYPE_CHECKING, Any, List, Type
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Type, Union
 
 from .utils.events import EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
@@ -18,8 +18,17 @@ RE_IS_FLOAT = re.compile(r"^\-?\d+\.\d+$")
 if TYPE_CHECKING:
     from lutron_homeworks.commands import LutronCommand
 
+CallbackT = Callable[[Any], Union[Any, Awaitable[Any]]]
+
 class LutronHomeworksClient:
-    def __init__(self, host, username=None, password=None, port=23, keepalive_interval=60):
+    def __init__(
+        self,
+        host: str,
+        username: str | None = None,
+        password: str | None = None,
+        port: int = 23,
+        keepalive_interval: int = 60,
+    ):
         self.host = host
         self.port = port
         self.username = username
@@ -92,7 +101,7 @@ class LutronHomeworksClient:
         return self.connected
 
     @tracer.start_as_current_span("Login")
-    async def _login(self):
+    async def _login(self) -> bool:
         try:
             if self.username is None or self.password is None:
                 raise ValueError("Username and password must be provided.")
@@ -142,7 +151,7 @@ class LutronHomeworksClient:
             self._schedule_reconnect()
             return False
 
-    async def _read_until(self, end_bytes: bytes, timeout: float | None = None):
+    async def _read_until(self, end_bytes: bytes, timeout: float | None = None) -> bytes:
         """Read until the given prompt or timeout."""
 
         if timeout is None:
@@ -183,7 +192,7 @@ class LutronHomeworksClient:
         prompt_bytes = PROMPT.encode('ascii')
         return await self._read_until(prompt_bytes, timeout=timeout)
     
-    async def _write(self, data: str, timeout: float | None = None):
+    async def _write(self, data: str, timeout: float | None = None) -> None:
         """Write data to the server with an optional timeout.
         
         Args:
@@ -208,7 +217,7 @@ class LutronHomeworksClient:
                 self.logger.error(f"Write operation timed out after {timeout} seconds")
                 raise TimeoutError(f"Write operation timed out after {timeout} seconds")
 
-    def _start_output_emitter(self):
+    def _start_output_emitter(self) -> None:
         if self._output_emitter_task and not self._output_emitter_task.done():
             self.logger.warning("Output emitter task already running.")
             return
@@ -218,7 +227,7 @@ class LutronHomeworksClient:
             name="Lutron-OutputEmitter",
         )
     
-    async def _output_emitter_loop(self):
+    async def _output_emitter_loop(self) -> None:
         while True:
             disconnect_requested_task = asyncio.create_task(
                 self._disconnected_event.wait(),
@@ -275,23 +284,23 @@ class LutronHomeworksClient:
             
             self.logger.debug(f"Output emitter loop exiting")   
 
-    def _parse_output(self, output: bytes):
+    def _parse_output(self, output: bytes) -> tuple[str, Any] | tuple[None, None]:
         line = output.decode('ascii').strip()
         if not line:
-            return None, None
+            return (None, None)
 
         if line.startswith(PROMPT):
             self._eventbus.emit(LutronSpecialEvents.CommandPrompt.value, None)
-            return None, None
+            return (None, None)
 
         if not line.startswith(COMMAND_RESPONSE_PREFIX):
-            return None, None
+            return (None, None)
         
         parts = line.split(',')
         event = parts[0][1:]
         data = self._infer_data(parts[1:])
 
-        return event, data
+        return (event, data)
     
     def _infer_data(self, parts: List[str]) -> List[Any]:
         result = []
@@ -306,7 +315,7 @@ class LutronHomeworksClient:
 
         return result
     
-    def _start_keepalive(self):
+    def _start_keepalive(self) -> None:
         if self._keepalive_task and not self._keepalive_task.done():
             self.logger.warning("Keepalive task already running.")
             return
@@ -316,7 +325,7 @@ class LutronHomeworksClient:
             name="Lutron-Keepalive",
         )
 
-    async def _keepalive_loop(self):
+    async def _keepalive_loop(self) -> None:
         async def do_keepalive() -> None:
             self.logger.debug(f"Keepalive: Sending heartbeat [{self.keepalive_interval} seconds]")
             await asyncio.sleep(self.keepalive_interval)
@@ -354,19 +363,19 @@ class LutronHomeworksClient:
                     break
 
     @tracer.start_as_current_span("Send Heartbeat")
-    async def _send_heartbeat(self):
+    async def _send_heartbeat(self) -> None:
         """Send a keep-alive/heartbeat command. Customize as needed."""
         if self.connected and self.command_ready:
             self.logger.debug("Sending heartbeat...")
             await self.send_raw("")
 
-    async def _send_logout(self):
+    async def _send_logout(self) -> None:
         if self.connected and self.command_ready:
             self.logger.debug("Sending logout command...")
             await self.send_raw("LOGOUT")
 
     @tracer.start_as_current_span("Send Command")
-    async def send_raw(self, command: str):
+    async def send_raw(self, command: str) -> None:
         if not self.connected or self.writer is None:
             raise ConnectionError("Not connected to Lutron server.")
         await self._write(command + LINE_END)
@@ -402,7 +411,7 @@ class LutronHomeworksClient:
     def subscribe(
         self,
         event_name: EventT | LutronCommand | Type[LutronCommand] | LutronSpecialEvents,
-        callback,
+        callback: CallbackT,
     ) -> SubscriptionToken:
         """
         Subscript to events announced by the Lutron Homeworks server.
@@ -461,9 +470,9 @@ class LutronHomeworksClient:
             name="Lutron-Reconnect",
         )
 
-    async def _schedule_reset(self):
+    async def _schedule_reset(self) -> None:
         self.logger.info("Scheduling reset...")
-        async def do_reset():
+        async def do_reset() -> None:
             self.logger.info("Resetting Lutron client...")
             await self.disconnect()
             self.logger.info("Scheduling reconnection...")
@@ -475,18 +484,18 @@ class LutronHomeworksClient:
         )
 
     @tracer.start_as_current_span('Disconnect')
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         self.logger.info("Disconnecting Lutron client...")
 
         await self._teardown(full_shutdown=False)
 
     @tracer.start_as_current_span("Close")
-    async def close(self):
+    async def close(self) -> None:
         self.logger.info("Closing Lutron client...")
 
         await self._teardown(full_shutdown=True)
 
-    async def _teardown(self, full_shutdown: bool = False):
+    async def _teardown(self, full_shutdown: bool = False) -> None:
         self._disconnected_event.set()
         if full_shutdown:
             self._stop_event.set()
@@ -513,7 +522,7 @@ class LutronHomeworksClient:
         self.connected = False
         self.command_ready = False
 
-    async def _try_gather_tasks(self, full_shutdown: bool = False, timeout: float = 0.25):
+    async def _try_gather_tasks(self, full_shutdown: bool = False, timeout: float = 0.25) -> None:
         # Attempt to gather all tasks
         try:
             tasks = []
@@ -552,7 +561,7 @@ class LutronHomeworksClient:
             traceback.print_exc()
             self.logger.warning(f"Unhandled exception gathering tasks: {e}")
 
-    async def _cancel_tasks(self, include_reconnect: bool = False):
+    async def _cancel_tasks(self, include_reconnect: bool = False) -> None:
         cancelled_tasks = []
         
         if self._keepalive_task and not self._keepalive_task.done():
