@@ -241,6 +241,7 @@ class LutronHomeworksClient:
             name="Lutron-OutputEmitter",
         )
     
+    @tracer.start_as_current_span("Output Emitter Loop")
     async def _output_emitter_loop(self) -> None:
         while True:
             disconnect_requested_task = asyncio.create_task(
@@ -341,6 +342,7 @@ class LutronHomeworksClient:
             name="Lutron-Keepalive",
         )
 
+    @tracer.start_as_current_span("Keepalive Loop")
     async def _keepalive_loop(self) -> None:
         async def do_keepalive() -> None:
             logger.debug(f"Keepalive: Sending heartbeat [{self.keepalive_interval} seconds]")
