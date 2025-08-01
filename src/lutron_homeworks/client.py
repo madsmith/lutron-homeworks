@@ -41,10 +41,9 @@ class LutronHomeworksClient:
         self._output_emitter_task = None
         self._reconnect_task = None
 
-        self._read_timeout = 2
         self._login_timeout = 5
         self._write_timeout = 2
-        
+
         self._idle_read_timeout = 0.2
         self._reconnect_params = {
             'current_delay': 0.25,
@@ -70,10 +69,6 @@ class LutronHomeworksClient:
     
     def set_login_timeout(self, timeout: float) -> 'LutronHomeworksClient':
         self._login_timeout = timeout
-        return self
-
-    def set_read_timeout(self, timeout: float) -> 'LutronHomeworksClient':
-        self._read_timeout = timeout
         return self
     
     def set_write_timeout(self, timeout: float) -> 'LutronHomeworksClient':
@@ -176,9 +171,6 @@ class LutronHomeworksClient:
     async def _read_until(self, end_bytes: bytes, timeout: float | None = None) -> bytes:
         """Read until the given prompt or timeout."""
 
-        if timeout is None:
-            timeout = self._read_timeout
-        
         prompt_bytes = PROMPT.encode('ascii')
 
         buf = b""
