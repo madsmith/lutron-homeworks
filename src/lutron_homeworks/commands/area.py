@@ -145,7 +145,7 @@ class AreaCommand(LutronCommand[AreaAction], schema=schema):
          
         async def _command_complete(event_data: Any, future: asyncio.Future, unsubscribe_all: UnsubscribeFnT):
             # Implement a busy loop to wait for outputs to stabilize
-            prev_count = 0
+            prev_count = -1
             current_count = len(collected_outputs)
             
             # Keep checking for new outputs until we stop receiving them or max iterations reached
