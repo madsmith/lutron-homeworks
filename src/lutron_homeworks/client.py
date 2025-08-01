@@ -4,7 +4,7 @@ from opentelemetry import trace
 import re
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Type, Union
 
-from .utils.events import EventBus, EventT, SubscriptionToken
+from .utils.events import CallbackT, EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
 from .constants import *
 from .commands import LutronCommand
@@ -17,8 +17,6 @@ RE_IS_FLOAT = re.compile(r"^\-?\d+\.\d+$")
 
 if TYPE_CHECKING:
     from lutron_homeworks.commands import LutronCommand
-
-CallbackT = Callable[[Any], Union[Any, Awaitable[Any]]]
 
 class LutronHomeworksClient:
     def __init__(
@@ -278,6 +276,8 @@ class LutronHomeworksClient:
                     self._eventbus.emit(LutronSpecialEvents.AllEvents.value, output)
                     continue
 
+                assert event is not None and data is not None, "Parsed output returned invalid event/data"
+
                 self._eventbus.emit(event, data)
                 # Re-emit the event in parsed format
                 self._eventbus.emit(LutronSpecialEvents.AllEvents.value, data)
@@ -472,6 +472,7 @@ class LutronHomeworksClient:
 
     async def _schedule_reset(self) -> None:
         self.logger.info("Scheduling reset...")
+
         async def do_reset() -> None:
             self.logger.info("Resetting Lutron client...")
             await self.disconnect()
