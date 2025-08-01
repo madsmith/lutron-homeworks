@@ -373,9 +373,7 @@ class TestLutronClientMockedServer:
     async def test_connection_timeout(self, mocked_client: LutronHomeworksClient, mock_lutron_server: MockLutronServer):
         # Test client handling slow login response
         mock_lutron_server.set_login_timeout(3)  # 5 second login delay
-        
-        # Set shorter timeout on client
-        mocked_client._read_timeout = 1  # Timeout after 1 second
+        mocked_client.set_login_timeout(1)
         
         # Attempt connection - should fail due to timeout
         login_successful = await mocked_client.connect()

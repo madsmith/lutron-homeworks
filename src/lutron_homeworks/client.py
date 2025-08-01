@@ -42,8 +42,9 @@ class LutronHomeworksClient:
         self._reconnect_task = None
 
         self._read_timeout = 2
-        self._login_read_timeout = 0.5
+        self._login_timeout = 5
         self._write_timeout = 2
+        
         self._idle_read_timeout = 0.2
         self._reconnect_params = {
             'current_delay': 0.25,
@@ -66,6 +67,18 @@ class LutronHomeworksClient:
     def writer(self):
         assert self._writer is not None, "Connection not established. Call connect() first."
         return self._writer
+    
+    def set_login_timeout(self, timeout: float) -> 'LutronHomeworksClient':
+        self._login_timeout = timeout
+        return self
+
+    def set_read_timeout(self, timeout: float) -> 'LutronHomeworksClient':
+        self._read_timeout = timeout
+        return self
+    
+    def set_write_timeout(self, timeout: float) -> 'LutronHomeworksClient':
+        self._write_timeout = timeout
+        return self
     
     @tracer.start_as_current_span("Connect")
     async def connect(self) -> bool:
@@ -100,23 +113,35 @@ class LutronHomeworksClient:
     @tracer.start_as_current_span("Login")
     async def _login(self) -> bool:
         try:
+            # Use wait_for to add timeout to login operation
+            return await asyncio.wait_for(
+                self._process_login(),
+                self._login_timeout
+            )
+        except asyncio.TimeoutError:
+            await self.disconnect()
+            self._schedule_reconnect()
+            raise TimeoutError(f"Login timed out after {self._login_timeout} seconds")
+
+    async def _process_login(self) -> bool:
+        try:
             if self.username is None or self.password is None:
                 raise ValueError("Username and password must be provided.")
 
             logger.debug("Waiting for login prompt...")
             with tracer.start_as_current_span("Find Login Prompt"):
-                await self._read_until(b"login: ", timeout=self._login_read_timeout)
+                await self._read_until(b"login: ")
                 logger.debug("Sending Username")
                 await self._write(self.username + LINE_END)
 
             with tracer.start_as_current_span("Find Password Prompt"):
-                await self._read_until(b"password: ", timeout=self._login_read_timeout)
+                await self._read_until(b"password: ")
                 logger.debug("Sending Password")
                 await self._write(self.password + LINE_END)
 
             with tracer.start_as_current_span("Reading Command Ready Prompt"):
                 while True:
-                    line_bytes = await self._read_line(timeout=self._login_read_timeout)
+                    line_bytes = await self._read_line()
                     line = line_bytes.decode('ascii').strip()
                     if line == PROMPT:
                         break
@@ -132,7 +157,7 @@ class LutronHomeworksClient:
             # that is showing up attached to the first prompt)
             await self._write(LINE_END)
             with tracer.start_as_current_span("Reading Command Ready Prompt 2"):
-                await self._read_prompt(timeout=self._login_read_timeout)
+                await self._read_prompt()
             
             logger.debug("Login complete.")
             self.command_ready = True
