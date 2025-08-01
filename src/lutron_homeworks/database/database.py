@@ -15,12 +15,12 @@ from .types import (
     EntityType
 )
 
+logger = logging.getLogger(__name__)
 
 class LutronDatabase:
     def __init__(self, loader: LutronXMLDataLoader):
         self._entities: dict[str, LutronDBEntity] = {}
         self._filters: list[Filter] = []
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.loader = loader
 
         self._type_map: dict[str, list[str]] | None = None
@@ -29,7 +29,7 @@ class LutronDatabase:
     def load(self):
         xml = self.loader.load_xml()
         if xml is None:
-            self.logger.error("Failed to load XML data")
+            logger.error("Failed to load XML data")
             return
 
         self._parse_xml(xml)
@@ -38,7 +38,7 @@ class LutronDatabase:
         """ Enable a filter by name with a list of args """
         filter = FilterLibrary.get_filter(filter_name, args)
         if filter is None:
-            self.logger.error(f"Filter {filter_name} not found")
+            logger.error(f"Filter {filter_name} not found")
             return
         
         self._filters.append(filter)
@@ -150,12 +150,12 @@ class LutronDatabase:
                 self._walk_tree(nested, area_id)
     
     def _parse_xml(self, xml: bytes):
-        self.logger.info("Processing XML data and updating database...")
+        logger.info("Processing XML data and updating database...")
         root = ET.fromstring(xml.decode('utf-8'))
 
         areas_element = root.find("Areas")
         if areas_element is None:
-            self.logger.error("Failed to find Areas element in XML data")
+            logger.error("Failed to find Areas element in XML data")
             return
         
         self._walk_tree(areas_element)

@@ -4,6 +4,8 @@ from pathlib import Path
 import re
 import requests
 
+logger = logging.getLogger(__name__)
+
 class LutronXMLDataLoader:
     def __init__(self, host: str, cache_path: str):
         """
@@ -15,7 +17,6 @@ class LutronXMLDataLoader:
         """
         self.host = host
         self.cache_path = cache_path
-        self.logger = logging.getLogger(self.__class__.__name__)
         self._cache_only = False
 
     def set_cache_only(self, cache_only: bool):
@@ -39,7 +40,7 @@ class LutronXMLDataLoader:
 
                 cache_timestamp = self._parse_export_timestamp(cache_xml)
                 if cache_timestamp is None:
-                    self.logger.error("Failed to parse cache timestamp from cache XML, deleting cache")
+                    logger.error("Failed to parse cache timestamp from cache XML, deleting cache")
                     cache_file.unlink()
                     cache_xml = None
 
@@ -58,7 +59,7 @@ class LutronXMLDataLoader:
 
             return cache_xml
         except Exception as e:
-            self.logger.error(f"Failed to Load XML Data: {e}")
+            logger.error(f"Failed to Load XML Data: {e}")
             raise
 
     
@@ -90,7 +91,7 @@ class LutronXMLDataLoader:
                 # Parse MM/DD/YYYY HH:MM:SS format
                 return datetime.strptime(timestamp_str, "%m/%d/%Y %H:%M:%S")
             except ValueError:
-                self.logger.error(f"Failed to parse timestamp: {timestamp_str}")
+                logger.error(f"Failed to parse timestamp: {timestamp_str}")
                 return None
                 
         return None
@@ -111,7 +112,7 @@ class LutronXMLDataLoader:
         url = f"http://{self.host}/DbXmlInfo.xml"
         with requests.get(url, stream=True) as response:
             if response.status_code != 200:
-                self.logger.error(f"Failed to connect: {response.status_code}")
+                logger.error(f"Failed to connect: {response.status_code}")
                 raise Exception(f"Failed to connect to lutron database: {url}")
 
             buffer = b''
@@ -129,7 +130,7 @@ class LutronXMLDataLoader:
                         if server_timestamp > cache_timestamp:
                             confirmed_is_newer = True
                         else:
-                            self.logger.info(f"Local data is up to date (server: {server_timestamp}, local: {cache_timestamp})")
+                            logger.info(f"Local data is up to date (server: {server_timestamp}, local: {cache_timestamp})")
                             response.close()
                             return None
 
