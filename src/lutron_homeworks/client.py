@@ -2,7 +2,7 @@ import asyncio
 import logging
 from opentelemetry import trace
 import re
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Type, Union
+from typing import TYPE_CHECKING, Any, List, Type
 
 from .utils.events import CallbackT, EventBus, EventT, SubscriptionToken
 from .types import LutronSpecialEvents
