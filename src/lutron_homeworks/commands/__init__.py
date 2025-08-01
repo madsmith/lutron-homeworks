@@ -1,5 +1,5 @@
 from .base import LutronCommand, CommandSchema
-from .area import AreaCommand
-from .output import OutputCommand
-from .shadegroup import ShadeGroupCommand
-from .system import SystemCommand
+from .area import AreaCommand, AreaAction
+from .output import OutputCommand, OutputAction
+from .shadegroup import ShadeGroupCommand, ShadeGroupAction
+from .system import SystemCommand, SystemAction
