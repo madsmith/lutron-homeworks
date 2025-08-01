@@ -56,11 +56,11 @@ class MockLutronServer:
         """Add a command response to the server"""
         self.command_responses[command] = response
 
-    def set_login_timeout(self, seconds: int):
+    def set_login_timeout(self, seconds: int | None):
         """Set a timeout during login to simulate slow response"""
         self.login_timeout = seconds
 
-    def set_command_timeout(self, seconds: int):
+    def set_command_timeout(self, seconds: int | None):
         """Set a timeout for command responses to simulate slow response"""
         self.command_timeout = seconds
 
@@ -247,7 +247,7 @@ class TestLutronClientMockedServer:
             port=mock_lutron_server.port,
             username="default",
             password="default",
-            keepalive_interval=1  # Short keepalive for faster tests
+            keepalive_interval=3  # Short keepalive for faster tests
         )
         
         yield client
@@ -268,6 +268,8 @@ class TestLutronClientMockedServer:
         # Test sending commands and receiving responses
         await mocked_client.connect()
         assert mocked_client.connected, "Client should connect to mock server"
+
+        print("Connected: ", mocked_client.connected)
         
         response = None
         def response_handler(data: list):
@@ -295,6 +297,48 @@ class TestLutronClientMockedServer:
     
     @pytest.mark.asyncio
     async def test_server_disconnect(self, mocked_client: LutronHomeworksClient, mock_lutron_server: MockLutronServer):
+        assert mocked_client._reconnect_params is not None, "Test assumes reconnect params are set"
+        assert isinstance(mocked_client._reconnect_params, dict), "Test assumes reconnect params are a dict"
+        assert 'current_delay' in mocked_client._reconnect_params, "Test assumes reconnect params has current_delay"
+        assert 'initial_delay' in mocked_client._reconnect_params, "Test assumes reconnect params has initial_delay"
+        
+        mocked_client._reconnect_params['current_delay'] = 1
+        mocked_client._reconnect_params['initial_delay'] = 1
+
+        # Test client handling server disconnect
+        await mocked_client.connect()
+        assert mocked_client.connected, "Client should connect to mock server"
+        assert mocked_client.command_ready, "Client should be ready for commands"
+        
+        # Simulate server disconnect after 2 commands
+        mock_lutron_server.set_disconnect_after_commands(2)
+        
+        # Send a couple of commands to trigger disconnect
+        await mocked_client.send_raw("?SYSTEM,1")
+        await mocked_client.send_raw("?SYSTEM,2")
+  
+        
+        # Wait for disconnect detection in client's internal loop
+        # The client's reader task should detect the disconnection
+        for _ in range(10):  # Try for up to 1 second (0.1s * 10)
+            await asyncio.sleep(0.1)
+            if not mocked_client.connected:
+                break
+        
+        # Client should detect the disconnection
+        assert not mocked_client.connected, "Client should detect server disconnection"
+        assert not mocked_client.command_ready, "Client should not be ready for commands after disconnect"
+    
+    @pytest.mark.asyncio
+    async def test_server_disconnect_reconnect(self, mocked_client: LutronHomeworksClient, mock_lutron_server: MockLutronServer):
+        assert mocked_client._reconnect_params is not None, "Test assumes reconnect params are set"
+        assert isinstance(mocked_client._reconnect_params, dict), "Test assumes reconnect params are a dict"
+        assert 'current_delay' in mocked_client._reconnect_params, "Test assumes reconnect params has current_delay"
+        assert 'initial_delay' in mocked_client._reconnect_params, "Test assumes reconnect params has initial_delay"
+        
+        mocked_client._reconnect_params['current_delay'] = 1
+        mocked_client._reconnect_params['initial_delay'] = 1
+
         # Test client handling server disconnect
         await mocked_client.connect()
         assert mocked_client.connected, "Client should connect to mock server"
@@ -309,15 +353,22 @@ class TestLutronClientMockedServer:
         
         # Wait for disconnect detection in client's internal loop
         # The client's reader task should detect the disconnection
-        for _ in range(10):  # Try for up to 5 seconds (0.5s * 10)
-            await asyncio.sleep(0.5)
+        for _ in range(10):  # Try for up to 1 second (0.1s * 10)
+            await asyncio.sleep(0.1)
             if not mocked_client.connected:
                 break
         
         # Client should detect the disconnection
         assert not mocked_client.connected, "Client should detect server disconnection"
         assert not mocked_client.command_ready, "Client should not be ready for commands after disconnect"
-    
+
+        # Wait for reconnect
+        await asyncio.sleep(2)
+
+        # Client should reconnect
+        assert mocked_client.connected, "Client should reconnect to mock server"
+        assert mocked_client.command_ready, "Client should be ready for commands"
+
     @pytest.mark.asyncio 
     async def test_connection_timeout(self, mocked_client: LutronHomeworksClient, mock_lutron_server: MockLutronServer):
         # Test client handling slow login response
@@ -327,10 +378,22 @@ class TestLutronClientMockedServer:
         mocked_client._read_timeout = 1  # Timeout after 1 second
         
         # Attempt connection - should fail due to timeout
-        await mocked_client.connect()
+        login_successful = await mocked_client.connect()
+        assert not login_successful, "Client should fail to connect due to timeout"
+        
+        # Client should not be command ready
+        assert not mocked_client.command_ready, "Client should not be ready for commands after logout"
         
         assert not mocked_client.connected, "Client should fail to connect due to timeout"
-    
+
+        mock_lutron_server.set_login_timeout(None)
+
+        # Wait for reconnect
+        await asyncio.sleep(1)
+        
+        assert mocked_client.connected, "Client should reconnect to mock server"
+        assert mocked_client.command_ready, "Client should be ready for commands"
+
     
     @pytest.mark.asyncio
     async def test_logout_command(self, mocked_client: LutronHomeworksClient, mock_lutron_server: MockLutronServer):
