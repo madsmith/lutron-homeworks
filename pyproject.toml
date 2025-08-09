@@ -1,6 +1,6 @@
 [project]
 name = "lutron-homeworks"
-version = "0.5.1"
+version = "0.6.0"
 description = "API for Lutron Homeworks devices"
 authors = [
     {name = "Martin Smith", email = "msmith@bitmonster.org"}
