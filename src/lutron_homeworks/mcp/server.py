@@ -481,6 +481,7 @@ async def run_server(args):
         config.username,
         config.password,
         config.server_port,
+        keepalive_interval=config.keepalive_interval
     )
 
     # Connect to the client

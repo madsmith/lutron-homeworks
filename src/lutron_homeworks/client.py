@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import logging
 from opentelemetry import trace
 import re
@@ -56,6 +57,7 @@ class LutronHomeworksClient:
         self._command_lock = asyncio.Lock()
         self._stop_event = asyncio.Event()
         self._disconnected_event = asyncio.Event()
+        self._heartbeat_sent_event = asyncio.Event()
 
     @property
     def reader(self):
@@ -100,6 +102,7 @@ class LutronHomeworksClient:
             self._start_keepalive()
             self._start_output_emitter()
         except Exception as e:
+            # TODO: handle ENETUNREACH OSError more gracefully
             logger.error(f"Connection failed: {e}")
             await self._schedule_reset()
         
@@ -183,6 +186,9 @@ class LutronHomeworksClient:
                     logger.debug("Read: End of File detected.")
                     raise ConnectionError("Connection closed by server.")
 
+                # Any read is a sign of life, reset the heartbeat timer
+                self._heartbeat_sent_event.clear()
+
                 buf += chunk
                 # logger.debug(f"<< CHUNK READ: {chunk} [{len(chunk)}]")
                 if buf.endswith(prompt_bytes):
@@ -196,10 +202,15 @@ class LutronHomeworksClient:
             return buf
         except asyncio.TimeoutError:
             raise TimeoutError(f"Timeout waiting for prompt: {end_bytes}")
+        except Exception as e:
+            if isinstance(e, OSError) and e.errno == errno.ETIMEDOUT:
+                logger.error("Socket timed out {e}")
+                raise ConnectionError("Device Connection Lost - Socket Timeout")
+            else:
+                raise
 
     async def _read_line(self, timeout: float | None = None) -> bytes:
         line = await self._read_until(LINE_END.encode('ascii'), timeout=timeout)
-        logger.debug(f"<< {line.rstrip()}")
         return line
 
     async def _read_prompt(self, timeout: float | None = None) -> bytes:
@@ -243,7 +254,8 @@ class LutronHomeworksClient:
     
     @tracer.start_as_current_span("Output Emitter Loop")
     async def _output_emitter_loop(self) -> None:
-        while True:
+        is_running = True
+        while is_running:
             disconnect_requested_task = asyncio.create_task(
                 self._disconnected_event.wait(),
                 name="Lutron-OutputEmitter-DisconnectRequested",
@@ -263,8 +275,9 @@ class LutronHomeworksClient:
             
             if disconnect_requested_task in done:
                 logger.debug("Output emitter loop exiting due to disconnect request")
-                break
+                is_running = False
 
+            # Process read even if disconnect requested to clear the task result
             if read_task in done:
                 try:
                     output = read_task.result()
@@ -280,6 +293,9 @@ class LutronHomeworksClient:
                     import traceback
                     traceback.print_exc()
                     await self._schedule_reset()
+                    break
+
+                if not is_running: # Disconnect was requested, no need to proceed
                     break
 
                 try:
@@ -345,11 +361,19 @@ class LutronHomeworksClient:
     @tracer.start_as_current_span("Keepalive Loop")
     async def _keepalive_loop(self) -> None:
         async def do_keepalive() -> None:
-            logger.debug(f"Keepalive: Sending heartbeat [{self.keepalive_interval} seconds]")
+            # logger.debug(f"Keepalive: Sending heartbeat [{self.keepalive_interval} seconds]")
             await asyncio.sleep(self.keepalive_interval)
-            await self._send_heartbeat()
+
+            if self._heartbeat_sent_event.is_set():
+                # Previous keep alive was not acknowledged, reset connection
+                logger.warning("Keepalive: Previous keep alive was not acknowledged, resetting connection")
+                await self._schedule_reset()
+                return
             
-        while True:
+            await self._send_heartbeat()
+
+        is_running = True
+        while is_running:
             disconnect_requested_task = asyncio.create_task(
                 self._disconnected_event.wait(),
                 name="Lutron-Keepalive-DisconnectRequested",
@@ -369,7 +393,7 @@ class LutronHomeworksClient:
             
             if disconnect_requested_task in done:
                 logger.debug("Keepalive loop exiting due to disconnect request")
-                break
+                is_running = False
 
             # Check for keepalive failure
             if keepalive_task in done:
@@ -378,13 +402,14 @@ class LutronHomeworksClient:
                 except Exception as e:
                     logger.warning(f"Keepalive failed: {e}")
                     await self._schedule_reset()
-                    break
+                    is_running = False
 
     @tracer.start_as_current_span("Send Heartbeat")
     async def _send_heartbeat(self) -> None:
         """Send a keep-alive/heartbeat command. Customize as needed."""
         if self.connected and self.command_ready:
             logger.debug("Sending heartbeat...")
+            self._heartbeat_sent_event.set()
             await self.send_raw("")
 
     async def _send_logout(self) -> None:
@@ -470,6 +495,7 @@ class LutronHomeworksClient:
                 return
             
             try:
+                logger.debug(f"Scheduled attempt in {delay} seconds...")
                 await asyncio.sleep(delay)
                 logger.info(f"Attempting to reconnect...")
                 await self.connect()
@@ -533,6 +559,8 @@ class LutronHomeworksClient:
                     self._writer.close()
                     await self._writer.wait_closed()
                     self._writer = None
+                except OSError as e:
+                    pass
                 except Exception as e:
                     logger.warning(f"Error closing write connection: {e}")
             if self._reader:

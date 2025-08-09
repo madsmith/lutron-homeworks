@@ -9,6 +9,7 @@ class LutronConfig:
         self,
         server_host: str | None = None,
         server_port: int | None = None,
+        keepalive_interval: int | None = None,
         username: str | None = None,
         password: str | None = None,
         config_path: str | None = None,
@@ -20,6 +21,7 @@ class LutronConfig:
     ):
         self._server_host: str | None = server_host
         self._server_port: int | None = server_port
+        self._keepalive_interval: int | None = keepalive_interval
         self._database_address: str | None = database_address
         self._username: str | None = username
         self._password: str | None = password
@@ -80,6 +82,16 @@ class LutronConfig:
             return self._password
         password = self._config_get("LUTRON_PASSWORD", "lutron.server.password", "default")
         return password
+    
+    @property
+    def keepalive_interval(self) -> int:
+        if self._keepalive_interval:
+            return self._keepalive_interval
+        keepalive_interval = self._config_get("LUTRON_KEEPALIVE_INTERVAL", "lutron.server.keepalive_interval", 60)
+        try:
+            return int(keepalive_interval)
+        except ValueError:
+            raise ValueError(f"Invalid keepalive interval: {keepalive_interval}")
 
     @property
     def mode(self) -> str:

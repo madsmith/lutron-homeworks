@@ -6,6 +6,7 @@ import traceback
 from lutron_homeworks.mcp.server import version
   
 from lutron_homeworks.mcp.server import run_server
+from lutron_homeworks.utils.logging import LevelColorFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,16 @@ def main():
 
     args = parser.parse_args()
 
+    handler = logging.StreamHandler()
+    handler.setFormatter(LevelColorFormatter("%(levelname)s: %(message)s"))
+
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        root_logger.setLevel(logging.WARNING)
     
     try:
         asyncio.run(run_server(args))
